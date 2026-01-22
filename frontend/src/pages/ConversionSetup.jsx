@@ -9,6 +9,17 @@ function ConversionSetup() {
     const [box2To4, setBox2To4] = useState('');
     const [message, setMessage] = useState('');
     const containerLabels = { case: '整箱', bag: '袋子', box_2inch: '2寸盒', box_4inch: '4寸盒' };
+    const defaultCategoryOrder = ['protein', 'veg', 'frozen'];
+    const getCategoryOrder = () => {
+        try {
+            const stored = localStorage.getItem('m2go:categoryOrder');
+            if (!stored) return defaultCategoryOrder;
+            const parsed = JSON.parse(stored);
+            return Array.isArray(parsed) && parsed.length > 0 ? parsed : defaultCategoryOrder;
+        } catch (err) {
+            return defaultCategoryOrder;
+        }
+    };
 
     useEffect(() => {
         loadProducts();
@@ -18,6 +29,19 @@ function ConversionSetup() {
         const data = await getProducts();
         setProducts(data);
     }
+
+    const orderedProducts = [...products].sort((a, b) => {
+        const orderList = getCategoryOrder();
+        const aCat = orderList.indexOf(a.category);
+        const bCat = orderList.indexOf(b.category);
+        const aCatIndex = aCat === -1 ? 999 : aCat;
+        const bCatIndex = bCat === -1 ? 999 : bCat;
+        if (aCatIndex !== bCatIndex) return aCatIndex - bCatIndex;
+        const aOrder = Number.isFinite(a.sort_order) ? a.sort_order : 9999;
+        const bOrder = Number.isFinite(b.sort_order) ? b.sort_order : 9999;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return (a.name_zh || '').localeCompare(b.name_zh || '', 'zh');
+    });
 
     const handleConversionChange = async (variant, newVal) => {
         const val = parseFloat(newVal);
@@ -116,7 +140,7 @@ function ConversionSetup() {
                         <label>选择商品</label>
                         <select value={shortcutProductId} onChange={e => setShortcutProductId(e.target.value)}>
                             <option value="">请选择</option>
-                            {products.map(p => (
+                            {orderedProducts.map(p => (
                                 <option key={p.id} value={p.id}>{p.name_zh}</option>
                             ))}
                         </select>
@@ -157,9 +181,14 @@ function ConversionSetup() {
                     </tr>
                 </thead>
                 <tbody>
-                    {products.map(p => (
+                    {orderedProducts.map(p => (
                         <React.Fragment key={p.id}>
-                            {p.variants.map(v => (
+                            {[...(p.variants || [])].sort((a, b) => {
+                                const aOrder = Number.isFinite(a.sort_order) ? a.sort_order : 9999;
+                                const bOrder = Number.isFinite(b.sort_order) ? b.sort_order : 9999;
+                                if (aOrder !== bOrder) return aOrder - bOrder;
+                                return (a.display_name_zh || '').localeCompare(b.display_name_zh || '', 'zh');
+                            }).map(v => (
                                 <tr key={v.id}>
                                     <td>{p.name_zh}</td>
                                     <td>{v.display_name_zh} <span style={{ color: '#777' }}>· {containerLabels[v.container] || v.container}</span></td>

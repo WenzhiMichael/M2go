@@ -8,6 +8,7 @@ class VariantBase(BaseModel):
     container: str
     conversion_to_base: Optional[float] = None
     display_name_zh: str
+    sort_order: Optional[int] = None
 
 class VariantCreate(VariantBase):
     pass
@@ -25,6 +26,7 @@ class ProductBase(BaseModel):
     supplier: Optional[str] = None
     case_pack: Optional[float] = None
     min_order_qty: Optional[float] = None
+    sort_order: Optional[int] = None
     is_active: bool = True
 
 class ProductCreate(ProductBase):
@@ -61,6 +63,8 @@ class OrderLine(OrderLineBase):
     id: int
     product_name_zh: Optional[str] = None # Helper field
     loading_risk: Optional[bool] = None
+    product_category: Optional[str] = None
+    product_sort_order: Optional[int] = None
     class Config:
         from_attributes = True
 

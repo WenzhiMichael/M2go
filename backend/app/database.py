@@ -24,3 +24,15 @@ def ensure_schema():
                 conn.execute(text("ALTER TABLE daily_counts ADD COLUMN prev_on_hand FLOAT"))
             if "adjustment" not in col_names:
                 conn.execute(text("ALTER TABLE daily_counts ADD COLUMN adjustment FLOAT"))
+
+        if "products" in table_names:
+            cols = conn.execute(text("PRAGMA table_info(products)")).fetchall()
+            col_names = {row[1] for row in cols}
+            if "sort_order" not in col_names:
+                conn.execute(text("ALTER TABLE products ADD COLUMN sort_order INTEGER"))
+
+        if "variants" in table_names:
+            cols = conn.execute(text("PRAGMA table_info(variants)")).fetchall()
+            col_names = {row[1] for row in cols}
+            if "sort_order" not in col_names:
+                conn.execute(text("ALTER TABLE variants ADD COLUMN sort_order INTEGER"))

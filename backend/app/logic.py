@@ -203,6 +203,8 @@ def calculate_order_suggestion(db: Session, order_type: str):
              suggestions.append({
                 "product_id": p.id,
                 "product_name_zh": p.name_zh,
+                "product_category": p.category,
+                "product_sort_order": p.sort_order,
                 "suggested_qty": final_qty,
                 "final_qty": final_qty,
                 "unit": unit,

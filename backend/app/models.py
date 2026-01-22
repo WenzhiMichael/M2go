@@ -15,6 +15,7 @@ class Product(Base):
     case_pack = Column(Float, nullable=True) # items per case, for rounding
     min_order_qty = Column(Float, nullable=True)
     is_active = Column(Boolean, default=True)
+    sort_order = Column(Integer, nullable=True)
 
     variants = relationship("Variant", back_populates="product")
 
@@ -27,6 +28,7 @@ class Variant(Base):
     container = Column(String, nullable=False) # case, bag, box_2inch, box_4inch
     conversion_to_base = Column(Float, nullable=True) # how many base units in this container
     display_name_zh = Column(String, nullable=False)
+    sort_order = Column(Integer, nullable=True)
 
     product = relationship("Product", back_populates="variants")
     daily_counts = relationship("DailyCount", back_populates="variant")

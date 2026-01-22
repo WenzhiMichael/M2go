@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session, selectinload
+from sqlalchemy import func
 from typing import List
 from . import models, schemas, database, logic, seed, csv_export
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,7 +39,11 @@ def get_products(db: Session = Depends(get_db)):
 
 @app.post("/products", response_model=schemas.Product, status_code=status.HTTP_201_CREATED)
 def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)):
-    db_product = models.Product(**product.model_dump())
+    data = product.model_dump()
+    if data.get("sort_order") is None:
+        max_order = db.query(func.max(models.Product.sort_order)).filter(models.Product.category == data.get("category")).scalar()
+        data["sort_order"] = (max_order or 0) + 1
+    db_product = models.Product(**data)
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
@@ -51,6 +56,8 @@ def update_product(product_id: int, product: schemas.ProductCreate, db: Session 
         raise HTTPException(status_code=404, detail="Product not found")
 
     for key, value in product.model_dump().items():
+        if key == "sort_order" and value is None:
+            continue
         setattr(db_product, key, value)
     db.commit()
     db.refresh(db_product)
@@ -67,7 +74,11 @@ def delete_product(product_id: int, db: Session = Depends(get_db)):
 
 @app.post("/variants", response_model=schemas.Variant, status_code=status.HTTP_201_CREATED)
 def create_variant(variant: schemas.VariantCreate, db: Session = Depends(get_db)):
-    db_variant = models.Variant(**variant.model_dump())
+    data = variant.model_dump()
+    if data.get("sort_order") is None:
+        max_order = db.query(func.max(models.Variant.sort_order)).filter(models.Variant.product_id == data.get("product_id")).scalar()
+        data["sort_order"] = (max_order or 0) + 1
+    db_variant = models.Variant(**data)
     db.add(db_variant)
     db.commit()
     db.refresh(db_variant)
@@ -80,6 +91,8 @@ def update_variant(variant_id: int, variant: schemas.VariantCreate, db: Session 
         raise HTTPException(status_code=404, detail="Variant not found")
 
     for key, value in variant.model_dump().items():
+        if key == "sort_order" and value is None:
+            continue
         setattr(db_variant, key, value)
     db.commit()
     db.refresh(db_variant)
