@@ -16,6 +16,7 @@
 需要 Python 3.9+ 与 Node.js（建议 18+）。
 ```bash
 ./dev.sh
+
 ```
 说明：
 - 首次运行会创建后端虚拟环境并安装依赖。
@@ -92,6 +93,34 @@ npm run dev
 ```bash
 PYTHONPATH=backend backend/venv/bin/python -m pytest backend/tests/test_logic.py -q
 ```
+
+## 部署（给客户网址）
+推荐：前端用 Vercel，后端用 Render（带持久化磁盘）。
+
+### 1) 部署后端（Render）
+- 类型：Web Service  
+- 启动命令：
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+- 挂载持久化磁盘（例如 `/var/data`）  
+- 环境变量：
+```bash
+DATABASE_URL=sqlite:////var/data/m2go.db
+```
+
+### 2) 部署前端（Vercel）
+- 选择项目根目录为 `frontend/`
+- 构建命令：`npm run build`
+- 输出目录：`dist`
+- 环境变量（指向 Render 后端地址）：
+```bash
+VITE_API_URL=https://<你的-render-后端域名>
+```
+
+### 3) 使用
+访问 Vercel 提供的网址即可使用系统。  
+如果需要使用 `stock-management` 作为子域名，可在 Vercel 创建项目时设置项目名为 `stock-management`。
 
 ## 常见问题
 - `npm run dev` 报错找不到 `package.json`  
