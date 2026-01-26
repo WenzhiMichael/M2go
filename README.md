@@ -12,11 +12,27 @@
 
 ## 安装与运行
 
-### 一键启动（推荐）
-需要 Python 3.9+ 与 Node.js（建议 18+）。
+## 部署指南 (Deployment)
+
+### 1. 后端 (Render)
+M2GO 后端可以直接部署到 Render (推荐使用 Blueprint)。
+
+1.  将代码推送到 GitHub。
+2.  在 Render Dashboard 中选择 "New Blueprint Instance"。
+3.  连接你的 Repo，Render 会自动读取 `render.yaml`。
+4.  Render 会自动创建 Python Web Service 和 PostgreSQL 数据库。
+5.  部署完成后，复制分配给 Backend 的 URL (例如 `https://m2go-backend.onrender.com`)。
+
+### 2. 前端 (Vercel)
+1.  在 Vercel 中 "Import Project" 并选择你的 GitHub Repo。
+2.  **Framework Preset**: 选择 `Vite`。
+3.  **Root Directory**: 选择 `frontend` (不要选跟目录)。
+4.  **Environment Variables**: 添加变量 `VITE_API_BASE_URL`，值为你的 Render Backend URL (不要带尾部 Slash, 例如 `https://m2go-backend.onrender.com`)。
+5.  点击 Deploy。
+
+### 若手动启动 (Local)
 ```bash
 ./dev.sh
-
 ```
 说明：
 - 首次运行会创建后端虚拟环境并安装依赖。

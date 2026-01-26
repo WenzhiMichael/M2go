@@ -6,3 +6,6 @@ pytest
 httpx
 python-multipart
 alembic
+gunicorn
+psycopg2-binary
+python-dotenv

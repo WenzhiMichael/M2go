@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 export async function getProducts() {
   const res = await fetch(`${API_URL}/products`);
@@ -54,7 +54,7 @@ export async function updateVariant(id, data) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-    return res.json();
+  return res.json();
 }
 
 export async function deleteVariant(id) {
