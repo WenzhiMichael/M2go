@@ -23,6 +23,11 @@
 #### 1) 数据库（Supabase）
 1. 创建 Supabase 项目，进入 Database/Settings 拿到 **Connection string (URI)**。
 2. 复制形如 `postgresql://...` 的连接串（通常自带 `sslmode=require`）。
+3. 在 Supabase 的 SQL Editor 执行 `samples/supabase_setup.sql` 内容（启用 RLS + 创建 `apply_daily_count` 函数）。
+4. 在 Authentication → Users 创建登录账号（邮箱/密码），用于前端登录。
+5. 在 Project Settings → API 获取：
+   - `URL`（用于 `VITE_SUPABASE_URL`）
+   - `anon` 公钥（用于 `VITE_SUPABASE_ANON_KEY`）
 
 #### 2) 后端（Render）
 1. 新建 Web Service，连接 GitHub Repo。
@@ -41,6 +46,8 @@
 3. Root Directory：`frontend`
 4. 环境变量：
    - `VITE_API_BASE_URL` = 上一步的 Render 后端 URL
+   - `VITE_SUPABASE_URL` = Supabase 项目 URL（形如 `https://xxxxx.supabase.co`）
+   - `VITE_SUPABASE_ANON_KEY` = Supabase 的 anon key
 5. Deploy。
 
 ### 方案 B（付费稳定）
@@ -83,8 +90,15 @@ npm install
 npm run dev
 ```
 浏览器访问终端提示的地址（默认 http://localhost:5173）。
+说明：
+- 本地需要配置以下环境变量：
+  - `VITE_SUPABASE_URL`
+  - `VITE_SUPABASE_ANON_KEY`
+  - `VITE_API_BASE_URL`（用于订货建议/导出）
 
 ## 使用流程
+0. 登录  
+   使用 Supabase 中创建的账号登录系统。
 1. 换算设置  
    先补齐换算，缺失会导致订货不准。快捷换算默认以 4 寸盒 = 1 基准单位(份)。
 2. 每日盘点  

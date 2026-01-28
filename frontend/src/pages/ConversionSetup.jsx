@@ -8,6 +8,7 @@ function ConversionSetup() {
     const [bagTo4, setBagTo4] = useState('');
     const [box2To4, setBox2To4] = useState('');
     const [message, setMessage] = useState('');
+    const [loadError, setLoadError] = useState('');
     const containerLabels = { case: '整箱', bag: '袋子', box_2inch: '2寸盒', box_4inch: '4寸盒' };
     const defaultCategoryOrder = ['protein', 'veg', 'frozen'];
     const getCategoryOrder = () => {
@@ -26,8 +27,15 @@ function ConversionSetup() {
     }, []);
 
     async function loadProducts() {
-        const data = await getProducts();
-        setProducts(data);
+        try {
+            setLoadError('');
+            const data = await getProducts();
+            setProducts(data);
+        } catch (err) {
+            console.error(err);
+            setLoadError('商品加载失败，请确认已登录并检查网络');
+            setProducts([]);
+        }
     }
 
     const orderedProducts = [...products].sort((a, b) => {
@@ -129,6 +137,11 @@ function ConversionSetup() {
     return (
         <div className="card">
             <h2>换算设置</h2>
+            {loadError && (
+                <div className="text-center" style={{ marginBottom: '1rem', color: '#b91c1c' }}>
+                    {loadError}
+                </div>
+            )}
             <p style={{ marginBottom: '1rem', color: '#666' }}>
                 先选择商品，再用快捷方式设置与4寸盒的换算关系。系统默认 1 个 4 寸盒 = 1 个基准单位(份)。
             </p>

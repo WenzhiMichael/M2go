@@ -1,67 +1,86 @@
+import { supabase } from './supabase';
+
 const API_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 export async function getProducts() {
-  const res = await fetch(`${API_URL}/products`);
-  return res.json();
+  const { data, error } = await supabase
+    .from('products')
+    .select('*, variants(*)')
+    .eq('is_active', true);
+  if (error) throw error;
+  return data || [];
 }
 
 export async function createProduct(data) {
-  const res = await fetch(`${API_URL}/products`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  return res.json();
+  const { data: created, error } = await supabase
+    .from('products')
+    .insert(data)
+    .select()
+    .single();
+  if (error) throw error;
+  return created;
 }
 
 export async function updateProduct(id, data) {
-  const res = await fetch(`${API_URL}/products/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  return res.json();
+  const { data: updated, error } = await supabase
+    .from('products')
+    .update(data)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return updated;
 }
 
 export async function deleteProduct(id) {
-  const res = await fetch(`${API_URL}/products/${id}`, {
-    method: "DELETE",
-  });
-  return res.json();
+  const { data: updated, error } = await supabase
+    .from('products')
+    .update({ is_active: false })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return updated;
 }
 
 export async function saveDailyCount(data) {
-  const res = await fetch(`${API_URL}/daily_counts`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+  const { error } = await supabase.rpc('apply_daily_count', {
+    p_date: data.date,
+    p_variant_id: data.variant_id,
+    p_counted_qty: data.counted_qty
   });
-  return res.json();
+  if (error) throw error;
+  return { status: "ok" };
 }
 
 export async function createVariant(data) {
-  const res = await fetch(`${API_URL}/variants`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  return res.json();
+  const { data: created, error } = await supabase
+    .from('variants')
+    .insert(data)
+    .select()
+    .single();
+  if (error) throw error;
+  return created;
 }
 
 export async function updateVariant(id, data) {
-  const res = await fetch(`${API_URL}/variants/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  return res.json();
+  const { data: updated, error } = await supabase
+    .from('variants')
+    .update(data)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return updated;
 }
 
 export async function deleteVariant(id) {
-  const res = await fetch(`${API_URL}/variants/${id}`, {
-    method: "DELETE",
-  });
-  return res.json();
+  const { error } = await supabase
+    .from('variants')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+  return { status: "ok" };
 }
 
 export async function getOrderSuggestions(type) {

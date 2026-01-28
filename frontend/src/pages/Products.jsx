@@ -55,6 +55,7 @@ function Products() {
     const [search, setSearch] = useState('');
     const [expandedId, setExpandedId] = useState(null);
     const [categoryOrder, setCategoryOrder] = useState(loadCategoryOrder);
+    const [loadError, setLoadError] = useState('');
     const [newProduct, setNewProduct] = useState({
         name_zh: '',
         name_en: '',
@@ -92,8 +93,15 @@ function Products() {
     }, [products, categoryOrder]);
 
     async function loadProducts() {
-        const data = await getProducts();
-        setProducts(data);
+        try {
+            setLoadError('');
+            const data = await getProducts();
+            setProducts(data);
+        } catch (err) {
+            console.error(err);
+            setLoadError('商品加载失败，请确认已登录并检查网络');
+            setProducts([]);
+        }
     }
 
     const buildProductPayload = (product) => ({
@@ -308,6 +316,11 @@ function Products() {
     return (
         <div className="card">
             <h2>商品与规格管理</h2>
+            {loadError && (
+                <div className="text-center" style={{ marginBottom: '1rem', color: '#b91c1c' }}>
+                    {loadError}
+                </div>
+            )}
 
             <div className="count-toolbar">
                 <input

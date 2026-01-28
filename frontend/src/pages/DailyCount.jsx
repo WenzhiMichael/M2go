@@ -90,7 +90,7 @@ function DailyCount() {
             setProducts(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error(err);
-            setLoadError('商品加载失败，请确认后端已启动');
+            setLoadError('商品加载失败，请确认已登录并检查网络');
             setProducts([]);
         }
     }
