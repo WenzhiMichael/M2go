@@ -19,6 +19,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+def startup_seed():
+    db = database.SessionLocal()
+    try:
+        seed.seed_data(db)
+    except Exception as exc:
+        print(f"Seed on startup failed: {exc}")
+    finally:
+        db.close()
+
 # Dependency
 def get_db():
     db = database.SessionLocal()
