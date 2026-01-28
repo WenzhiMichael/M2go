@@ -14,21 +14,40 @@
 
 ## 部署指南 (Deployment)
 
-### 1. 后端 (Render)
-M2GO 后端可以直接部署到 Render (推荐使用 Blueprint)。
+### 方案 A（免费长期，推荐给个人/演示）
+前端：Vercel 免费  
+后端：Render 免费 Web Service  
+数据库：Supabase 免费 Postgres  
+说明：免费服务可能休眠/暂停，需访问唤醒（以官方规则为准）。
 
-1.  将代码推送到 GitHub。
-2.  在 Render Dashboard 中选择 "New Blueprint Instance"。
-3.  连接你的 Repo，Render 会自动读取 `render.yaml`。
-4.  Render 会自动创建 Python Web Service 和 PostgreSQL 数据库。
-5.  部署完成后，复制分配给 Backend 的 URL (例如 `https://m2go-backend.onrender.com`)。
+#### 1) 数据库（Supabase）
+1. 创建 Supabase 项目，进入 Database/Settings 拿到 **Connection string (URI)**。
+2. 复制形如 `postgresql://...` 的连接串（通常自带 `sslmode=require`）。
 
-### 2. 前端 (Vercel)
-1.  在 Vercel 中 "Import Project" 并选择你的 GitHub Repo。
-2.  **Framework Preset**: 选择 `Vite`。
-3.  **Root Directory**: 选择 `frontend` (不要选跟目录)。
-4.  **Environment Variables**: 添加变量 `VITE_API_BASE_URL`，值为你的 Render Backend URL (不要带尾部 Slash, 例如 `https://m2go-backend.onrender.com`)。
-5.  点击 Deploy。
+#### 2) 后端（Render）
+1. 新建 Web Service，连接 GitHub Repo。
+2. 填写：
+   - Language：Python  
+   - Root Directory：`backend`  
+   - Build Command：`pip install -r requirements.txt`  
+   - Start Command：`uvicorn app.main:app --host 0.0.0.0 --port $PORT`  
+3. 环境变量：
+   - `DATABASE_URL` = Supabase 连接串
+4. 部署完成后，复制后端 URL（例如 `https://m2go-backend.onrender.com`）。
+
+#### 3) 前端（Vercel）
+1. Import 项目，选择同一个 GitHub Repo。
+2. Framework Preset：`Vite`
+3. Root Directory：`frontend`
+4. 环境变量：
+   - `VITE_API_BASE_URL` = 上一步的 Render 后端 URL
+5. Deploy。
+
+### 方案 B（付费稳定）
+后端使用 Render 付费实例 + 持久化磁盘（SQLite），前端 Vercel 免费。
+1. Render Web Service 挂载磁盘（例如 `/var/data`）
+2. `DATABASE_URL=sqlite:////var/data/m2go.db`
+3. 其余同方案 A 的后端/前端配置。
 
 ### 若手动启动 (Local)
 ```bash
@@ -111,32 +130,8 @@ PYTHONPATH=backend backend/venv/bin/python -m pytest backend/tests/test_logic.py
 ```
 
 ## 部署（给客户网址）
-推荐：前端用 Vercel，后端用 Render（带持久化磁盘）。
-
-### 1) 部署后端（Render）
-- 类型：Web Service  
-- 启动命令：
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
-- 挂载持久化磁盘（例如 `/var/data`）  
-- 环境变量：
-```bash
-DATABASE_URL=sqlite:////var/data/m2go.db
-```
-
-### 2) 部署前端（Vercel）
-- 选择项目根目录为 `frontend/`
-- 构建命令：`npm run build`
-- 输出目录：`dist`
-- 环境变量（指向 Render 后端地址）：
-```bash
-VITE_API_URL=https://<你的-render-后端域名>
-```
-
-### 3) 使用
-访问 Vercel 提供的网址即可使用系统。  
-如果需要使用 `stock-management` 作为子域名，可在 Vercel 创建项目时设置项目名为 `stock-management`。
+按照上面的方案 A/B 部署完成后，把 **Vercel 前端网址**发给客户即可使用。  
+如果需要 `stock-management` 作为子域名，可在 Vercel 创建项目时设置项目名为 `stock-management`。
 
 ## 常见问题
 - `npm run dev` 报错找不到 `package.json`  

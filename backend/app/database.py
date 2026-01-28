@@ -14,6 +14,8 @@ Base = declarative_base()
 
 def ensure_schema():
     # Lightweight fallback for older SQLite files without new columns.
+    if not SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+        return
     with engine.begin() as conn:
         tables = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()
         table_names = {row[0] for row in tables}

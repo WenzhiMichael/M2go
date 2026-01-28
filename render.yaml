@@ -7,13 +7,4 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
-      - key: DATABASE_URL
-        fromDatabase:
-          name: m2go-db
-          property: connectionString
-
-databases:
-  - name: m2go-db
-    databaseName: m2go
-    user: m2go_user
-    plan: free
+      # DATABASE_URL should be set in Render dashboard (e.g., Supabase Postgres URI)
