@@ -14,47 +14,31 @@
 
 ## 部署指南 (Deployment)
 
-### 方案 A（免费长期，推荐给个人/演示）
+### 方案 A（推荐：仅 Vercel + Supabase）
 前端：Vercel 免费  
-后端：Render 免费 Web Service  
 数据库：Supabase 免费 Postgres  
-说明：免费服务可能休眠/暂停，需访问唤醒（以官方规则为准）。
+说明：Supabase 免费项目可能会在长期无活动时暂停，访问可唤醒（以官方规则为准）。
 
 #### 1) 数据库（Supabase）
-1. 创建 Supabase 项目，进入 Database/Settings 拿到 **Connection string (URI)**。
-2. 复制形如 `postgresql://...` 的连接串（通常自带 `sslmode=require`）。
-3. 在 Supabase 的 SQL Editor 执行 `samples/supabase_setup.sql` 内容（启用 RLS + 创建 `apply_daily_count` 函数）。
-4. 在 Authentication → Users 创建登录账号（邮箱/密码），用于前端登录。
-5. 在 Project Settings → API 获取：
+1. 在 Supabase 的 SQL Editor 执行 `samples/schema.sql`（创建表结构）。
+2. 再执行 `samples/supabase_setup.sql`（启用 RLS + 创建 `apply_daily_count` 函数）。
+3. 在 Authentication → Users 创建登录账号（邮箱/密码），用于前端登录。
+4. 在 Project Settings → API 获取：
    - `URL`（用于 `VITE_SUPABASE_URL`）
    - `anon` 公钥（用于 `VITE_SUPABASE_ANON_KEY`）
 
-#### 2) 后端（Render）
-1. 新建 Web Service，连接 GitHub Repo。
-2. 填写：
-   - Language：Python  
-   - Root Directory：`backend`  
-   - Build Command：`pip install -r requirements.txt`  
-   - Start Command：`uvicorn app.main:app --host 0.0.0.0 --port $PORT`  
-3. 环境变量：
-   - `DATABASE_URL` = Supabase 连接串
-4. 部署完成后，复制后端 URL（例如 `https://m2go-backend.onrender.com`）。
-
-#### 3) 前端（Vercel）
+#### 2) 前端（Vercel）
 1. Import 项目，选择同一个 GitHub Repo。
 2. Framework Preset：`Vite`
 3. Root Directory：`frontend`
 4. 环境变量：
-   - `VITE_API_BASE_URL` = 上一步的 Render 后端 URL
    - `VITE_SUPABASE_URL` = Supabase 项目 URL（形如 `https://xxxxx.supabase.co`）
    - `VITE_SUPABASE_ANON_KEY` = Supabase 的 anon key
 5. Deploy。
 
-### 方案 B（付费稳定）
-后端使用 Render 付费实例 + 持久化磁盘（SQLite），前端 Vercel 免费。
-1. Render Web Service 挂载磁盘（例如 `/var/data`）
-2. `DATABASE_URL=sqlite:////var/data/m2go.db`
-3. 其余同方案 A 的后端/前端配置。
+### 方案 B（可选：保留 Render 后端）
+如果你希望把“订货建议/导出”放在后端执行，可继续部署 Render。
+此时请参考旧版后端部署流程，并在 Vercel 额外配置 `VITE_API_BASE_URL`。
 
 ### 若手动启动 (Local)
 ```bash
@@ -94,7 +78,7 @@ npm run dev
 - 本地需要配置以下环境变量：
   - `VITE_SUPABASE_URL`
   - `VITE_SUPABASE_ANON_KEY`
-  - `VITE_API_BASE_URL`（用于订货建议/导出）
+  - `VITE_API_BASE_URL`（可选：仅当你保留 Render 后端时需要）
 
 ## 使用流程
 0. 登录  

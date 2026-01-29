@@ -21,6 +21,8 @@ end $$;
 grant usage on schema public to authenticated;
 grant all on all tables in schema public to authenticated;
 alter default privileges in schema public grant all on tables to authenticated;
+grant usage, select on all sequences in schema public to authenticated;
+alter default privileges in schema public grant usage, select on sequences to authenticated;
 
 -- Apply daily count with inventory adjustment (used by the frontend)
 create or replace function public.apply_daily_count(
