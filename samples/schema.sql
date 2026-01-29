@@ -59,3 +59,14 @@ create table if not exists settings (
   key text primary key,
   value text not null
 );
+
+create table if not exists audit_logs (
+  id bigserial primary key,
+  table_name text not null,
+  action text not null,
+  row_id text,
+  old_data jsonb,
+  new_data jsonb,
+  user_id uuid,
+  created_at timestamp default now()
+);

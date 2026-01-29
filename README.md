@@ -22,8 +22,9 @@
 #### 1) 数据库（Supabase）
 1. 在 Supabase 的 SQL Editor 执行 `samples/schema.sql`（创建表结构）。
 2. 再执行 `samples/supabase_setup.sql`（启用 RLS + 创建 `apply_daily_count` 函数）。
-3. 在 Authentication → Users 创建登录账号（邮箱/密码），用于前端登录。
-4. 在 Project Settings → API 获取：
+3. `supabase_setup.sql` 会创建审计日志（`audit_logs`），用于记录增删改。
+4. 在 Authentication → Users 创建登录账号（邮箱/密码），用于前端登录。
+5. 在 Project Settings → API 获取：
    - `URL`（用于 `VITE_SUPABASE_URL`）
    - `anon` 公钥（用于 `VITE_SUPABASE_ANON_KEY`）
 
