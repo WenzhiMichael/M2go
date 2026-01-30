@@ -11,10 +11,24 @@
 - 蔬菜丝混合规则：胡萝卜丝/洋葱丝/青葱丝按 2:1:1 分配。
 
 ## 安装与运行
+前置条件：Node.js（建议使用 LTS 版本）。
 
-## 部署指南 (Deployment)
+1) 在 Supabase 创建项目（或复用你已部署的项目），并在 SQL Editor 依次执行：
+   - `samples/schema.sql`
+   - `samples/supabase_setup.sql`
+2) 在 `frontend/.env.local` 配置环境变量：
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+3) 启动前端：
+```bash
+cd frontend
+npm install
+npm run dev
+```
+浏览器访问终端提示的地址（默认 http://localhost:5173）。
 
-### 方案 A（推荐：仅 Vercel + Supabase）
+## 部署指南 (Vercel + Supabase)
+
 前端：Vercel 免费  
 数据库：Supabase 免费 Postgres  
 说明：Supabase 免费项目可能会在长期无活动时暂停，访问可唤醒（以官方规则为准）。
@@ -36,50 +50,6 @@
    - `VITE_SUPABASE_URL` = Supabase 项目 URL（形如 `https://xxxxx.supabase.co`）
    - `VITE_SUPABASE_ANON_KEY` = Supabase 的 anon key
 5. Deploy。
-
-### 方案 B（可选：保留 Render 后端）
-如果你希望把“订货建议/导出”放在后端执行，可继续部署 Render。
-此时请参考旧版后端部署流程，并在 Vercel 额外配置 `VITE_API_BASE_URL`。
-
-### 若手动启动 (Local)
-```bash
-./dev.sh
-```
-说明：
-- 首次运行会创建后端虚拟环境并安装依赖。
-- 前端若无 `node_modules` 会自动执行 `npm install`。
-- 若是首次启用或重建数据库，请先在后端执行一次迁移（见下文）。
-
-### 后端
-需要 Python 3.9+。
-```bash
-cd backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# 运行迁移（推荐）
-alembic upgrade head
-
-# 启动后端
-uvicorn app.main:app --reload
-```
-说明：
-- 如果已有旧版 `m2go.db`，可先备份，再执行 `alembic stamp 0001_initial` 后 `alembic upgrade head`，或直接删除旧库重建。
-
-### 前端
-需要 Node.js。
-```bash
-cd frontend
-npm install
-npm run dev
-```
-浏览器访问终端提示的地址（默认 http://localhost:5173）。
-说明：
-- 本地需要配置以下环境变量：
-  - `VITE_SUPABASE_URL`
-  - `VITE_SUPABASE_ANON_KEY`
-  - `VITE_API_BASE_URL`（可选：仅当你保留 Render 后端时需要）
 
 ## 使用流程
 0. 登录  
@@ -124,16 +94,14 @@ npm run dev
 - `samples/products_sample.csv`：商品示例（可选）
 
 ## 测试
-```bash
-PYTHONPATH=backend backend/venv/bin/python -m pytest backend/tests/test_logic.py -q
-```
+暂无自动化测试；可运行 `npm run lint` 做静态检查。
 
 ## 部署（给客户网址）
-按照上面的方案 A/B 部署完成后，把 **Vercel 前端网址**发给客户即可使用。  
+按照上面的部署完成后，把 **Vercel 前端网址**发给客户即可使用。  
 如果需要 `stock-management` 作为子域名，可在 Vercel 创建项目时设置项目名为 `stock-management`。
 
 ## 常见问题
 - `npm run dev` 报错找不到 `package.json`  
   说明你在根目录执行了前端命令，请先 `cd frontend` 再运行。
-- 迁移报 `table already exists`  
-  旧库请先执行：`alembic stamp 0001_initial` 再 `alembic upgrade head`，或删除 `backend/m2go.db` 重新建库。
+- 登录失败或请求报错  
+  请检查 `frontend/.env.local` 是否配置了 `VITE_SUPABASE_URL` 与 `VITE_SUPABASE_ANON_KEY`，并确认 Supabase 项目已执行 SQL 初始化脚本。

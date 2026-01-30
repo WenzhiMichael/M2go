@@ -1,22 +1,5 @@
 .DS_Store
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.python-version
-.venv/
-venv/
-.pytest_cache/
-.mypy_cache/
-
-# Backend artifacts
-backend/m2go.db
-backend/*.db
-backend/*.sqlite
-backend/*.sqlite3
-
 # Node
 node_modules/
 dist/
