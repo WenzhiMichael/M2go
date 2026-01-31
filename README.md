@@ -13,9 +13,8 @@
 ## 安装与运行
 前置条件：Node.js（建议使用 LTS 版本）。
 
-1) 在 Supabase 创建项目（或复用你已部署的项目），并在 SQL Editor 依次执行：
-   - `samples/schema.sql`
-   - `samples/supabase_setup.sql`
+1) 在 Supabase 创建项目（或复用你已部署的项目），在 SQL Editor 执行：
+   - `samples/supabase_all_in_one.sql`
 2) 在 `frontend/.env.local` 配置环境变量：
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
@@ -34,11 +33,9 @@ npm run dev
 说明：Supabase 免费项目可能会在长期无活动时暂停，访问可唤醒（以官方规则为准）。
 
 #### 1) 数据库（Supabase）
-1. 在 Supabase 的 SQL Editor 执行 `samples/schema.sql`（创建表结构）。
-2. 再执行 `samples/supabase_setup.sql`（启用 RLS + 创建 `apply_daily_count` 函数）。
-3. `supabase_setup.sql` 会创建审计日志（`audit_logs`），用于记录增删改。
-4. 在 Authentication → Users 创建登录账号（邮箱/密码），用于前端登录。
-5. 在 Project Settings → API 获取：
+1. 在 Supabase 的 SQL Editor 执行 `samples/supabase_all_in_one.sql`（建表 + RLS + 函数 + 审计）。
+2. 在 Authentication → Users 创建登录账号（邮箱/密码），用于前端登录。
+3. 在 Project Settings → API 获取：
    - `URL`（用于 `VITE_SUPABASE_URL`）
    - `anon` 公钥（用于 `VITE_SUPABASE_ANON_KEY`）
 
