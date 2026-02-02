@@ -314,8 +314,14 @@ function Products() {
     };
 
     return (
-        <div className="card">
-            <h2>商品与规格管理</h2>
+        <div className="neumorphic-inset rounded-[2.5rem] p-6 space-y-6">
+            <div>
+                <span className="text-[10px] font-mono font-bold text-[#0f766e] tracking-[0.3em] uppercase block mb-1">
+                    商品库
+                </span>
+                <h2 className="text-3xl font-bold text-gray-700">商品与规格管理</h2>
+                <p className="text-sm text-gray-500">维护商品信息、分类与规格参数。</p>
+            </div>
             {loadError && (
                 <div className="text-center" style={{ marginBottom: '1rem', color: '#b91c1c' }}>
                     {loadError}
@@ -579,3 +585,4 @@ function Products() {
 }
 
 export default Products;
+

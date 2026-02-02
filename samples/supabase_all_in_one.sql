@@ -171,20 +171,32 @@ language plpgsql
 security definer
 set search_path = public
 as $$
-declare v_row_id text;
+declare
+  v_row_id text;
+  v_new jsonb;
+  v_old jsonb;
 begin
+  v_new := to_jsonb(new);
+  v_old := to_jsonb(old);
   if (tg_op = 'DELETE') then
-    v_row_id := coalesce(old.id::text, old.key::text, old.variant_id::text);
+    v_row_id := coalesce(v_old ->> 'id', v_old ->> 'key', v_old ->> 'variant_id');
     insert into audit_logs (table_name, action, row_id, old_data, new_data, user_id)
     values (tg_table_name, 'DELETE', v_row_id, to_jsonb(old), null, auth.uid());
     return old;
   elsif (tg_op = 'UPDATE') then
-    v_row_id := coalesce(new.id::text, old.id::text, new.key::text, old.key::text, new.variant_id::text, old.variant_id::text);
+    v_row_id := coalesce(
+      v_new ->> 'id',
+      v_old ->> 'id',
+      v_new ->> 'key',
+      v_old ->> 'key',
+      v_new ->> 'variant_id',
+      v_old ->> 'variant_id'
+    );
     insert into audit_logs (table_name, action, row_id, old_data, new_data, user_id)
     values (tg_table_name, 'UPDATE', v_row_id, to_jsonb(old), to_jsonb(new), auth.uid());
     return new;
   else
-    v_row_id := coalesce(new.id::text, new.key::text, new.variant_id::text);
+    v_row_id := coalesce(v_new ->> 'id', v_new ->> 'key', v_new ->> 'variant_id');
     insert into audit_logs (table_name, action, row_id, old_data, new_data, user_id)
     values (tg_table_name, 'INSERT', v_row_id, null, to_jsonb(new), auth.uid());
     return new;
@@ -218,3 +230,181 @@ create trigger audit_order_lines after insert or update or delete on public.orde
 drop trigger if exists audit_settings on public.settings;
 create trigger audit_settings after insert or update or delete on public.settings
   for each row execute function public.log_audit();
+
+-- =======================
+-- 5) Seed Data (Proteins / Veg / Frozen)
+-- =======================
+with seed_products as (
+  select *
+  from (values
+    ('鸡球', 'Chicken Ball', 'protein', 'chill', 10::double precision, null::double precision, 1),
+    ('柠檬鸡', 'Lemon Chicken', 'protein', 'chill', 10::double precision, null::double precision, 2),
+    ('黑鸡', 'Dark Chicken', 'protein', 'chill', 10::double precision, null::double precision, 3),
+    ('牛肉', 'Beef', 'protein', 'chill', 5::double precision, null::double precision, 4),
+    ('鸡翅', 'Chicken Wings', 'protein', 'chill', 8::double precision, null::double precision, 5),
+    ('猪肉', 'Pork', 'protein', 'chill', 10::double precision, null::double precision, 6),
+
+    ('青椒', 'Green pepper', 'veg', 'room', null::double precision, 1::double precision, 1),
+    ('芹菜', 'Celery', 'veg', 'room', null::double precision, 1::double precision, 2),
+    ('西兰花', 'Broccoli', 'veg', 'room', null::double precision, 1::double precision, 3),
+    ('胡萝卜', 'Carrot', 'veg', 'room', null::double precision, 1::double precision, 4),
+    ('洋葱', 'Onion', 'veg', 'room', null::double precision, 1::double precision, 5),
+    ('青葱', 'Green onion', 'veg', 'room', null::double precision, 1::double precision, 6),
+    ('蘑菇', 'Mushroom', 'veg', 'room', null::double precision, 1::double precision, 7),
+    ('豆芽', 'Bean sprouts', 'veg', 'room', null::double precision, 1::double precision, 8),
+
+    ('芒果', 'Mango', 'frozen', 'frozen', null::double precision, null::double precision, 1),
+    ('玛格丽塔', 'Margarita', 'frozen', 'frozen', null::double precision, null::double precision, 2),
+    ('草莓', 'Strawberry', 'frozen', 'frozen', null::double precision, null::double precision, 3),
+    ('覆盆子', 'Raspberry', 'frozen', 'frozen', null::double precision, null::double precision, 4),
+    ('桃子', 'Peach', 'frozen', 'frozen', null::double precision, null::double precision, 5),
+    ('芝麻球', 'Sesame Ball', 'frozen', 'frozen', null::double precision, null::double precision, 6),
+    ('饺子', 'Dumpling', 'frozen', 'frozen', null::double precision, null::double precision, 7),
+    ('馄饨', 'Wonton', 'frozen', 'frozen', null::double precision, null::double precision, 8),
+    ('大虾', 'Large Shrimp', 'frozen', 'frozen', null::double precision, null::double precision, 9),
+    ('小虾', 'Small Shrimp', 'frozen', 'frozen', null::double precision, null::double precision, 10),
+    ('春卷', 'Spring Roll', 'frozen', 'frozen', null::double precision, null::double precision, 11),
+    ('天妇罗炸虾', 'Tempura Shrimp', 'frozen', 'frozen', null::double precision, null::double precision, 12),
+    ('玉米粒', 'Corn', 'frozen', 'frozen', null::double precision, null::double precision, 13)
+  ) as t(name_zh, name_en, category, storage_type, case_pack, min_order_qty, sort_order)
+)
+insert into products (name_zh, name_en, category, storage_type, case_pack, min_order_qty, sort_order)
+select name_zh, name_en, category, storage_type, case_pack, min_order_qty, sort_order
+from seed_products
+on conflict ((lower(name_zh))) do update
+set name_en = excluded.name_en,
+    category = excluded.category,
+    storage_type = excluded.storage_type,
+    case_pack = excluded.case_pack,
+    min_order_qty = excluded.min_order_qty,
+    sort_order = excluded.sort_order,
+    is_active = true;
+
+-- Protein variants
+with protein_products as (
+  select id, name_zh, case_pack
+  from products
+  where name_zh in ('鸡球', '柠檬鸡', '黑鸡', '牛肉', '鸡翅', '猪肉')
+),
+protein_variants as (
+  select p.id as product_id, 'RAW'::text as form, 'case'::text as container,
+         p.name_zh || '-原箱(生)' as display_name_zh, p.case_pack as conversion_to_base, 1 as sort_order
+  from protein_products p
+  union all
+  select p.id, 'RAW', 'bag', p.name_zh || '-袋装(生)', 1.0, 2
+  from protein_products p
+  union all
+  select p.id, 'COOKED_CHILL', 'case', p.name_zh || '-预炸(冷藏)-整箱', p.case_pack, 3
+  from protein_products p
+  union all
+  select p.id, 'COOKED_CHILL', 'box_2inch', p.name_zh || '-预炸(冷藏)-2寸盒', 0.5, 4
+  from protein_products p
+  union all
+  select p.id, 'COOKED_CHILL', 'box_4inch', p.name_zh || '-预炸(冷藏)-4寸盒', 1.0, 5
+  from protein_products p
+)
+insert into variants (product_id, form, container, display_name_zh, conversion_to_base, sort_order)
+select pv.product_id, pv.form, pv.container, pv.display_name_zh, pv.conversion_to_base, pv.sort_order
+from protein_variants pv
+where not exists (
+  select 1 from variants v
+  where v.product_id = pv.product_id and v.form = pv.form and v.container = pv.container
+);
+
+-- Veg variants (RAW case/bag)
+with veg_products as (
+  select id, name_zh
+  from products
+  where name_zh in ('青椒', '芹菜', '西兰花', '胡萝卜', '洋葱', '青葱', '蘑菇', '豆芽')
+),
+veg_variants as (
+  select v.id as product_id, 'RAW'::text as form, 'case'::text as container,
+         v.name_zh || '-原箱' as display_name_zh, 10.0 as conversion_to_base, 1 as sort_order
+  from veg_products v
+  union all
+  select v.id, 'RAW', 'bag', v.name_zh || '-袋装', 1.0, 2
+  from veg_products v
+)
+insert into variants (product_id, form, container, display_name_zh, conversion_to_base, sort_order)
+select vv.product_id, vv.form, vv.container, vv.display_name_zh, vv.conversion_to_base, vv.sort_order
+from veg_variants vv
+where not exists (
+  select 1 from variants x
+  where x.product_id = vv.product_id and x.form = vv.form and x.container = vv.container
+);
+
+-- Veg cut variants
+with veg_products as (
+  select id, name_zh
+  from products
+  where name_zh in ('青椒', '芹菜', '西兰花', '胡萝卜', '洋葱', '青葱', '蘑菇', '豆芽')
+),
+cut_map as (
+  select * from (values
+    ('青椒', 'chunk', '切块'),
+    ('胡萝卜', 'chunk', '切块'),
+    ('洋葱', 'chunk', '切块'),
+    ('洋葱', 'shred', '切丝'),
+    ('青葱', 'shred', '切丝'),
+    ('胡萝卜', 'shred', '切丝'),
+    ('胡萝卜', 'dice', '切丁'),
+    ('西兰花', 'dice', '切丁')
+  ) as t(name_zh, cut_key, cut_label)
+),
+container_map as (
+  select * from (values
+    ('box_2inch', '2寸盒', 0.5),
+    ('box_4inch', '4寸盒', 1.0)
+  ) as t(container, container_label, conversion_to_base)
+),
+cut_rows as (
+  select
+    vp.id as product_id,
+    vp.name_zh,
+    cm.cut_key,
+    cm.cut_label,
+    c.container,
+    c.container_label,
+    c.conversion_to_base,
+    2 + row_number() over (partition by vp.id order by cm.cut_key, c.container) as sort_order
+  from veg_products vp
+  join cut_map cm on cm.name_zh = vp.name_zh
+  join container_map c on true
+)
+insert into variants (product_id, form, container, display_name_zh, conversion_to_base, sort_order)
+select
+  cr.product_id,
+  'PREP_' || cr.cut_key,
+  cr.container,
+  cr.name_zh || '-' || cr.cut_label || '-' || cr.container_label,
+  cr.conversion_to_base,
+  cr.sort_order
+from cut_rows cr
+where not exists (
+  select 1 from variants v
+  where v.product_id = cr.product_id
+    and v.form = 'PREP_' || cr.cut_key
+    and v.container = cr.container
+);
+
+-- Frozen variants
+with frozen_products as (
+  select id, name_zh
+  from products
+  where name_zh in ('芒果', '玛格丽塔', '草莓', '覆盆子', '桃子', '芝麻球', '饺子', '馄饨', '大虾', '小虾', '春卷', '天妇罗炸虾', '玉米粒')
+),
+frozen_variants as (
+  select f.id as product_id, 'FROZEN'::text as form, 'case'::text as container,
+         f.name_zh || '-原箱' as display_name_zh, 10.0 as conversion_to_base, 1 as sort_order
+  from frozen_products f
+  union all
+  select f.id, 'FROZEN', 'bag', f.name_zh || '-袋装', 1.0, 2
+  from frozen_products f
+)
+insert into variants (product_id, form, container, display_name_zh, conversion_to_base, sort_order)
+select fv.product_id, fv.form, fv.container, fv.display_name_zh, fv.conversion_to_base, fv.sort_order
+from frozen_variants fv
+where not exists (
+  select 1 from variants v
+  where v.product_id = fv.product_id and v.form = fv.form and v.container = fv.container
+);

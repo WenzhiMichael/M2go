@@ -70,22 +70,22 @@ function SortableProductCard({
     const selectedIds = new Set(entries.map(e => e.variantId).filter(Boolean));
 
     return (
-        <div ref={setNodeRef} style={style} className={cn("group mb-4", isDragging && "opacity-50")}>
+        <div ref={setNodeRef} style={style} className={cn("group mb-4", isDragging && "opacity-60")}>
             <div className={cn(
-                "overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-200",
-                isDragging ? "border-[#C5A572] shadow-lg ring-1 ring-[#C5A572]" : "border-gray-100 hover:border-[#C5A572]/30 hover:shadow-md"
+                "overflow-hidden rounded-2xl border bg-white/40 transition-all duration-200",
+                isDragging ? "border-white/80 shadow-lg ring-1 ring-white/60" : "border-white/50 hover:border-white/80"
             )}>
                 {/* Header */}
-                <div className="flex items-center justify-between border-b border-gray-50 bg-gray-50/50 px-4 py-3">
+                <div className="flex items-center justify-between border-b border-white/40 bg-white/30 px-4 py-3">
                     <div className="flex items-center gap-3">
                         <div
                             {...attributes}
                             {...listeners}
-                            className="flex h-8 w-8 cursor-grab items-center justify-center rounded-lg text-gray-400 opacity-0 transition-all hover:bg-gray-200 active:cursor-grabbing group-hover:opacity-100"
+                            className="flex h-8 w-8 cursor-grab items-center justify-center rounded-lg text-gray-400 opacity-0 transition-all hover:bg-white/60 active:cursor-grabbing group-hover:opacity-100"
                         >
                             <GripVertical className="h-4 w-4" />
                         </div>
-                        <span className="font-semibold text-gray-900">{product.name_zh}</span>
+                        <span className="font-semibold text-gray-800">{product.name_zh}</span>
                         {product.name_en && (
                             <span className="text-xs text-gray-400 hidden sm:inline-block">{product.name_en}</span>
                         )}
@@ -93,7 +93,7 @@ function SortableProductCard({
                 </div>
 
                 {/* Content */}
-                <div className="divide-y divide-gray-50 p-4">
+                <div className="divide-y divide-white/40 p-4">
                     <AnimatePresence initial={false}>
                         {entries.map((entry, index) => {
                             const currentVariantId = entry.variantId || (variants[0] ? variants[0].id : '');
@@ -116,7 +116,7 @@ function SortableProductCard({
                                                 onUpdateEntry(product.id, index, { variantId: Number.isNaN(nextId) ? '' : nextId });
                                             }}
                                             disabled={!hasVariants}
-                                            className="w-full appearance-none rounded-xl border border-gray-200 bg-white px-4 py-2.5 pr-10 text-sm font-medium text-gray-700 transition-colors focus:border-[#C5A572] focus:outline-none focus:ring-1 focus:ring-[#C5A572]"
+                                            className="w-full appearance-none rounded-xl border border-white/70 bg-white/40 px-4 py-2.5 pr-10 text-sm font-medium text-gray-700 transition-colors focus:border-[#0f766e]/40 focus:outline-none focus:ring-1 focus:ring-[#0f766e]/30"
                                         >
                                             {variants.length === 0 && <option value="">无规格</option>}
                                             {variants.map(v => (
@@ -130,7 +130,7 @@ function SortableProductCard({
 
                                     {/* Qty & Actions */}
                                     <div className="flex items-center gap-2">
-                                        <div className="flex items-center rounded-xl border border-gray-200 bg-gray-50/50 p-1">
+                                        <div className="flex items-center rounded-xl border border-white/60 bg-white/40 p-1">
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -139,13 +139,13 @@ function SortableProductCard({
                                                     onUpdateEntry(product.id, index, { qty: String(next) });
                                                 }}
                                                 disabled={!hasVariants}
-                                                className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-gray-600 shadow-sm transition-transform active:scale-95 disabled:opacity-50 hover:text-[#C5A572]"
+                                                className="neumorphic-button flex h-8 w-8 items-center justify-center rounded-lg text-gray-600 transition-transform active:scale-95 disabled:opacity-50 hover:text-[#0f766e]"
                                             >
                                                 <Minus className="h-3.5 w-3.5" />
                                             </button>
                                             <input
                                                 type="number"
-                                                className="w-16 bg-transparent text-center text-sm font-semibold text-gray-900 focus:outline-none"
+                                                className="w-16 bg-transparent text-center text-sm font-semibold text-gray-800 focus:outline-none"
                                                 placeholder="0"
                                                 value={qtyValue}
                                                 onChange={e => onUpdateEntry(product.id, index, { qty: e.target.value })}
@@ -159,7 +159,7 @@ function SortableProductCard({
                                                     onUpdateEntry(product.id, index, { qty: String(next) });
                                                 }}
                                                 disabled={!hasVariants}
-                                                className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-gray-600 shadow-sm transition-transform active:scale-95 disabled:opacity-50 hover:text-[#C5A572]"
+                                                className="neumorphic-button flex h-8 w-8 items-center justify-center rounded-lg text-gray-600 transition-transform active:scale-95 disabled:opacity-50 hover:text-[#0f766e]"
                                             >
                                                 <Plus className="h-3.5 w-3.5" />
                                             </button>
@@ -169,7 +169,7 @@ function SortableProductCard({
                                             <button
                                                 type="button"
                                                 onClick={() => onRemoveEntry(product.id, index)}
-                                                className="flex h-10 w-10 items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                                                className="neumorphic-button flex h-10 w-10 items-center justify-center rounded-xl text-gray-400 transition-colors hover:text-red-500"
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </button>
@@ -182,12 +182,12 @@ function SortableProductCard({
                 </div>
 
                 {/* Footer Action */}
-                <div className="border-t border-gray-50 bg-gray-50/30 px-4 py-2">
+                <div className="border-t border-white/40 bg-white/20 px-4 py-2">
                     <button
                         type="button"
                         onClick={() => onAddEntry(product.id, variants, selectedIds)}
                         disabled={!hasVariants}
-                        className="text-xs font-semibold text-[#bfa070] transition-colors hover:text-[#a0845a] disabled:opacity-50"
+                        className="text-xs font-semibold text-[#0f766e] transition-colors hover:text-[#0b5d58] disabled:opacity-50"
                     >
                         + 添加规格
                     </button>
@@ -363,9 +363,7 @@ function DailyCount() {
         const newGroupOrder = arrayMove(currentGroup, oldIndex, newIndex);
 
         // Optimistic Update
-        const newProducts = [...products];
-        // We need to update existing items with their new sort order
-        // Map ID -> new Order
+        const prevProducts = products;
         const orderMap = new Map(newGroupOrder.map((p, idx) => [p.id, idx + 1]));
 
         setProducts(prev => prev.map(p => {
@@ -382,8 +380,8 @@ function DailyCount() {
             ));
         } catch (err) {
             console.error("Failed to reorder:", err);
-            setError("排序保存失败");
-            // Revert would go here in a full robust app
+            setError("排序保存失败，已恢复原顺序");
+            setProducts(prevProducts);
         }
     };
 
@@ -463,13 +461,15 @@ function DailyCount() {
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
         >
-            <div className="mx-auto max-w-3xl space-y-8 pb-20">
-                {/* Header Section */}
-                <div className="sticky top-0 z-40 -mx-6 bg-[#FDFBF7]/95 px-6 py-4 backdrop-blur-md transition-all">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="neumorphic-inset rounded-[2.5rem] p-6 space-y-8">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                         <div>
-                            <h2 className="text-2xl font-bold tracking-tight text-gray-900">每日盘点</h2>
-                            <p className="text-xs text-gray-500">记得定期保存哦</p>
+                            <span className="text-[10px] font-mono font-bold text-[#0f766e] tracking-[0.3em] uppercase block mb-1">
+                                库存盘点
+                            </span>
+                            <h2 className="text-3xl font-bold text-gray-700 stamped-title">每日盘点</h2>
+                            <p className="text-sm text-gray-500">记得定期保存并同步库存</p>
                         </div>
 
                         <div className="flex items-center gap-3">
@@ -479,78 +479,133 @@ function DailyCount() {
                                     type="date"
                                     value={date}
                                     onChange={e => setDate(e.target.value)}
-                                    className="rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-4 text-sm font-medium text-gray-700 shadow-sm focus:border-[#C5A572] focus:outline-none focus:ring-1 focus:ring-[#C5A572]"
+                                    className="pl-9 pr-4"
                                 />
                             </div>
                             <button
                                 onClick={handleSubmit}
                                 disabled={saveLoading}
                                 className={cn(
-                                    "flex items-center gap-2 rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:bg-gray-800 hover:shadow-lg active:scale-95 disabled:opacity-70",
-                                    message && "bg-green-600 hover:bg-green-700"
+                                    "neumorphic-button flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-mono uppercase tracking-widest text-gray-600",
+                                    message && "text-green-600"
                                 )}
                             >
                                 {saveLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                {message ? '已保存！' : '保存'}
+                                {message ? '已保存' : '保存'}
                             </button>
                         </div>
                     </div>
 
-                    {/* Search Bar */}
-                    <div className="mt-4 relative">
+                    <div className="relative">
                         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                         <input
                             type="text"
-                            placeholder="搜索商品..."
+                            placeholder="搜索商品 (中文/英文)"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm shadow-sm transition-all placeholder:text-gray-400 focus:border-[#C5A572] focus:outline-none focus:ring-1 focus:ring-[#C5A572]"
+                            className="w-full pl-10 pr-4"
                         />
                     </div>
-                    {error && <div className="mt-2 text-xs font-semibold text-red-500">{error}</div>}
+
+                    {error && <div className="text-xs font-semibold text-red-500">{error}</div>}
+
+                    <div className="space-y-8">
+                        {orderedCategories.map(cat => (
+                            <div key={cat} className="space-y-3">
+                                <h3 className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-gray-400">
+                                    <span className="h-px flex-1 bg-white/60"></span>
+                                    {categoryLabels[cat] || cat}
+                                    <span className="h-px flex-1 bg-white/60"></span>
+                                </h3>
+
+                                <SortableContext
+                                    items={groupedProducts[cat].map(p => p.id)}
+                                    strategy={verticalListSortingStrategy}
+                                >
+                                    {groupedProducts[cat].map(product => (
+                                        <SortableProductCard
+                                            key={product.id}
+                                            product={product}
+                                            variants={getVariantOptions(product)}
+                                            selections={selections}
+                                            entries={getEntries(product.id, getVariantOptions(product))}
+                                            onUpdateEntry={handleUpdateEntry}
+                                            onAddEntry={handleAddEntry}
+                                            onRemoveEntry={handleRemoveEntry}
+                                            containerLabels={containerLabels}
+                                        />
+                                    ))}
+                                </SortableContext>
+                            </div>
+                        ))}
+
+                        {orderedCategories.length === 0 && (
+                            <div className="py-16 text-center text-gray-400">
+                                <p>没有找到相关商品</p>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-
-                {/* Categories List */}
-                <div className="space-y-8">
-                    {orderedCategories.map(cat => (
-                        <div key={cat} className="space-y-3">
-                            <h3 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-gray-400">
-                                <span className="h-px flex-1 bg-gray-200"></span>
-                                {categoryLabels[cat] || cat}
-                                <span className="h-px flex-1 bg-gray-200"></span>
-                            </h3>
-
-                            <SortableContext
-                                items={groupedProducts[cat].map(p => p.id)}
-                                strategy={verticalListSortingStrategy}
+                <aside className="flex flex-col gap-6">
+                    <div className="neumorphic-flat rounded-3xl p-6 flex flex-col gap-6">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-mono uppercase tracking-[0.3em] text-gray-400 font-bold">
+                                快捷输入
+                            </span>
+                            <button className="neumorphic-button p-2 rounded-lg text-gray-500">
+                                <span className="material-symbols-outlined text-sm">settings</span>
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-4">
+                            {['7','8','9','4','5','6','1','2','3','0','.'].map((key) => (
+                                <button
+                                    key={key}
+                                    className="neumorphic-button rounded-2xl flex items-center justify-center text-2xl font-bold text-gray-600 border border-white/40"
+                                    type="button"
+                                >
+                                    {key}
+                                </button>
+                            ))}
+                            <button
+                                className="neumorphic-button rounded-2xl flex items-center justify-center text-red-500 border border-white/40"
+                                type="button"
                             >
-                                {groupedProducts[cat].map(product => (
-                                    <SortableProductCard
-                                        key={product.id}
-                                        product={product}
-                                        variants={getVariantOptions(product)}
-                                        selections={selections}
-                                        entries={getEntries(product.id, getVariantOptions(product))}
-                                        onUpdateEntry={handleUpdateEntry}
-                                        onAddEntry={handleAddEntry}
-                                        onRemoveEntry={handleRemoveEntry}
-                                        containerLabels={containerLabels}
-                                    />
-                                ))}
-                            </SortableContext>
+                                <span className="material-symbols-outlined text-3xl">backspace</span>
+                            </button>
                         </div>
-                    ))}
+                        <button className="neumorphic-button mt-2 py-4 rounded-2xl font-bold text-gray-600 uppercase tracking-[0.2em] flex items-center justify-center gap-3">
+                            下一项 <span className="material-symbols-outlined text-[#0f766e]">south</span>
+                        </button>
+                    </div>
 
-                    {orderedCategories.length === 0 && (
-                        <div className="py-20 text-center text-gray-400">
-                            <p>没有找到相关商品</p>
+                    <div className="flex flex-col gap-4">
+                        <div className="text-center text-[11px] font-mono uppercase tracking-[0.4em] text-gray-500">
+                            保存盘点 / Save Count
                         </div>
-                    )}
-                </div>
+                        <div className="slider-track h-24 rounded-[2rem] flex items-center p-3 relative">
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-[0.3em] opacity-60">
+                                    滑动确认
+                                </span>
+                            </div>
+                            <div className="slider-handle h-16 w-40 rounded-[1.5rem] knurled-texture flex items-center justify-center cursor-pointer border border-white/70 group transition-all z-10">
+                                <div className="flex gap-2">
+                                    <span className="material-symbols-outlined text-gray-400 group-hover:text-[#0f766e] transition-colors">chevron_right</span>
+                                    <span className="material-symbols-outlined text-gray-400 group-hover:text-[#0f766e] transition-colors">chevron_right</span>
+                                    <span className="material-symbols-outlined text-gray-400 group-hover:text-[#0f766e] transition-colors">chevron_right</span>
+                                </div>
+                            </div>
+                        </div>
+                        <p className="text-[10px] font-mono text-gray-400 text-center leading-relaxed uppercase tracking-widest">
+                            滑动确认后写入盘点记录
+                        </p>
+                    </div>
+                </aside>
             </div>
         </DndContext>
     );
 }
 
 export default DailyCount;
+

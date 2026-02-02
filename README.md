@@ -1,4 +1,4 @@
-# M2GO 订货助手
+﻿# M2GO 订货助手
 
 面向外卖店的库存 + 订货 MVP。所有界面文字为中文。
 
@@ -15,6 +15,7 @@
 
 1) 在 Supabase 创建项目（或复用你已部署的项目），在 SQL Editor 执行：
    - `samples/supabase_all_in_one.sql`
+   - 该脚本已包含基础商品/规格种子数据（蛋白/蔬菜/冷冻）
 2) 在 `frontend/.env.local` 配置环境变量：
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
@@ -102,3 +103,4 @@ npm run dev
   说明你在根目录执行了前端命令，请先 `cd frontend` 再运行。
 - 登录失败或请求报错  
   请检查 `frontend/.env.local` 是否配置了 `VITE_SUPABASE_URL` 与 `VITE_SUPABASE_ANON_KEY`，并确认 Supabase 项目已执行 SQL 初始化脚本。
+
