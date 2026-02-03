@@ -102,6 +102,7 @@ function SortableProductCard({
                                     onUpdateEntry(product.id, idx, { qty: String(next) });
                                 }}
                                 className="w-10 h-10 rounded-full bg-gray-50 hover:bg-brand-red hover:text-white text-gray-600 transition-colors flex items-center justify-center"
+                                aria-label={t('减少数量', 'Decrease quantity')}
                             >
                                 <span className="material-symbols-outlined text-lg">remove</span>
                             </button>
@@ -113,6 +114,9 @@ function SortableProductCard({
                                 onChange={(e) => onUpdateEntry(product.id, idx, { qty: e.target.value })}
                                 onFocus={() => onFocus(product.id)}
                                 className="w-20 text-center border-none bg-transparent font-black text-xl text-brand-red focus:ring-0 p-0 placeholder-gray-300"
+                                inputMode="decimal"
+                                min="0"
+                                aria-label={`${product.name_zh} ${containerLabel}`}
                             />
 
                             <button
@@ -122,6 +126,7 @@ function SortableProductCard({
                                     onUpdateEntry(product.id, idx, { qty: String(next) });
                                 }}
                                 className="w-10 h-10 rounded-full bg-gray-50 hover:bg-brand-red hover:text-white text-gray-600 transition-colors flex items-center justify-center"
+                                aria-label={t('增加数量', 'Increase quantity')}
                             >
                                 <span className="material-symbols-outlined text-lg">add</span>
                             </button>
@@ -323,6 +328,7 @@ function DailyCount() {
                             placeholder={t('搜索食材', 'Search items')}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
+                            aria-label={t('搜索食材', 'Search items')}
                         />
                     </div>
 
@@ -390,6 +396,7 @@ function DailyCount() {
                             <button
                                 onClick={() => handleKeypad('backspace')}
                                 className="aspect-square rounded-xl bg-red-50 hover:bg-red-100 text-xl font-bold text-brand-red transition-colors shadow-sm border border-red-100 active:scale-95 flex items-center justify-center"
+                                aria-label={t('退格', 'Backspace')}
                             >
                                 <span className="material-symbols-outlined">backspace</span>
                             </button>
@@ -440,4 +447,3 @@ function DailyCount() {
 }
 
 export default DailyCount;
-
