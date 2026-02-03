@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DailyCount from './pages/DailyCount';
 import ConversionSetup from './pages/ConversionSetup';
@@ -7,9 +7,11 @@ import Products from './pages/Products';
 import Settings from './pages/Settings';
 import Dashboard from './pages/Dashboard';
 import Analytics from './pages/Analytics';
+import SelectMode from './pages/SelectMode';
 import Layout from './components/Layout';
 import { supabase } from './supabase';
 import { useLang } from './i18n';
+import { useUserRole } from './context/UserRoleContext';
 
 function AuthScreen() {
   const [email, setEmail] = useState('');
@@ -110,30 +112,23 @@ function AuthScreen() {
   );
 }
 
+function RequireManager({ children }) {
+    const { mode, role } = useUserRole();
+    // If not manager mode (or not manager role), redirect to daily count
+    // But allow if we are just switching (maybe loading?)
+    // Actually loading is handled in App.
+
+    if (mode !== 'manager' || role !== 'manager') {
+        return <Navigate to="/daily-count" replace />;
+    }
+    return children;
+}
+
 function App() {
-  const [session, setSession] = useState(null);
-  const [checking, setChecking] = useState(true);
+  const { user, loading, mode } = useUserRole();
   const { t } = useLang();
 
-  useEffect(() => {
-    let mounted = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setSession(data.session || null);
-      setChecking(false);
-    });
-
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      setSession(nextSession || null);
-    });
-
-    return () => {
-      mounted = false;
-      listener?.subscription?.unsubscribe();
-    };
-  }, []);
-
-  if (checking) {
+  if (loading) {
     return (
       <div className="min-h-screen text-slate-700 flex items-center justify-center bg-brand-cream">
         <div className="bg-white rounded-2xl px-6 py-4 text-sm font-mono tracking-widest text-slate-500 shadow-xl border border-white/50">
@@ -143,25 +138,38 @@ function App() {
     );
   }
 
-  if (!session) {
+  if (!user) {
     return <AuthScreen />;
   }
 
   return (
-    <Layout>
-      <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/daily-count" element={<DailyCount />} />
-        <Route path="/conversion-setup" element={<ConversionSetup />} />
-        <Route path="/order-suggestions" element={<OrderSuggestions />} />
-        <Route path="/products" element={<Products />} />
-        <Route path="/analytics" element={<Analytics />} />
-        <Route path="/settings" element={<Settings />} />
-      </Routes>
-    </Layout>
+    <Routes>
+      <Route path="/select-mode" element={<SelectMode />} />
+
+      <Route path="/*" element={
+        !mode ? <Navigate to="/select-mode" replace /> : (
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Navigate to={mode === 'manager' ? "/dashboard" : "/daily-count"} replace />} />
+
+              {/* Shared Routes */}
+              <Route path="/daily-count" element={<DailyCount />} />
+              <Route path="/settings" element={<Settings />} />
+
+              {/* Manager Only Routes */}
+              <Route path="/dashboard" element={<RequireManager><Dashboard /></RequireManager>} />
+              <Route path="/conversion-setup" element={<RequireManager><ConversionSetup /></RequireManager>} />
+              <Route path="/order-suggestions" element={<RequireManager><OrderSuggestions /></RequireManager>} />
+              <Route path="/products" element={<RequireManager><Products /></RequireManager>} />
+              <Route path="/analytics" element={<RequireManager><Analytics /></RequireManager>} />
+
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Layout>
+        )
+      } />
+    </Routes>
   );
 }
 
 export default App;
-
