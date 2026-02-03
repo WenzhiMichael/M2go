@@ -1,16 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { createOrder, exportOrder, getOrderSuggestions } from '../api';
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+import { useLang } from '../i18n';
 
-const PROTEINS = new Set(['白鸡', '鸡球', '柠檬鸡', '黑鸡', '牛肉', '鸡翅', '猪肉']);
-
-const unitLabel = (unit) => {
-    if (!unit) return '';
-    if (unit.includes('箱')) return '箱';
-    if (unit.includes('袋')) return '袋';
-    if (unit.includes('包')) return '包';
-    if (unit.includes('基准单位')) return '包';
-    return unit;
-};
+function cn(...inputs) {
+    return twMerge(clsx(inputs));
+}
 
 const defaultCategoryOrder = ['protein', 'veg', 'frozen'];
 const getCategoryOrder = () => {
@@ -29,67 +25,115 @@ const formatNumber = (val) => {
     return Number(val).toFixed(1);
 };
 
-const OrderRow = ({
+const OrderCard = ({
     item,
     isExpanded,
     onToggle,
     onQtyChange,
     onStep,
     isEdited,
-    disabled
+    disabled,
+    t,
+    categoryLabelMap,
+    unitLabel
 }) => {
-    const rowMuted = item.suggested_qty === 0;
+    const rowMuted = item.suggested_qty === 0 && item.final_qty === 0;
     const displayUnit = unitLabel(item.unit);
+    const categoryLabel = categoryLabelMap[item.product_category] || item.product_category || t('综合', 'General');
+
     return (
-        <div className={`order-row ${rowMuted ? 'muted' : ''}`} onClick={() => onToggle(item.row_id)}>
-            <div className="order-row-main">
-                <div className="order-name">
-                    <div className="order-name-text">{item.product_name_zh}</div>
-                    {isEdited && <span className="order-edited">已手动修改</span>}
-                </div>
-                <div className="order-qty">
-                    <button
-                        className="qty-btn"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onStep(item.row_id, -1);
-                        }}
-                        disabled={disabled}
-                        aria-label="减少数量"
-                    >
-                        –
-                    </button>
-                    <input
-                        className="qty-input"
-                        type="number"
-                        value={item.final_qty}
-                        onChange={(e) => onQtyChange(item.row_id, e.target.value)}
-                        onClick={(e) => e.stopPropagation()}
-                        disabled={disabled}
-                    />
-                    <button
-                        className="qty-btn"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onStep(item.row_id, 1);
-                        }}
-                        disabled={disabled}
-                        aria-label="增加数量"
-                    >
-                        +
-                    </button>
-                </div>
-                <div className="order-unit">{displayUnit}</div>
-            </div>
-            {isExpanded && (
-                <div className="order-row-detail" onClick={(e) => e.stopPropagation()}>
-                    <div>覆盖天数：{formatNumber(item.reason_json?.cover_days)}</div>
-                    <div>日消耗：{formatNumber(item.reason_json?.daily_demand)}</div>
-                    <div>当前库存：{formatNumber(item.reason_json?.current_inventory)}</div>
-                    <div>安全缓冲：{formatNumber(item.reason_json?.safety_buffer)}</div>
-                    {item.loading_risk && <div className="order-risk">可能撑不到下次到货</div>}
-                </div>
+        <div
+            className={cn(
+                "group relative bg-white rounded-2xl border transition-all duration-300 overflow-hidden",
+                rowMuted ? "border-gray-100 opacity-60" : "border-gray-200 hover:border-brand-red/30 hover:shadow-lg hover:shadow-brand-red/5"
             )}
+            onClick={() => onToggle(item.row_id)}
+        >
+            <div className="p-5 flex flex-col sm:flex-row items-center gap-4">
+                <div className={cn(
+                    "w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0 transition-colors",
+                    rowMuted ? "bg-gray-100 text-gray-400" : "bg-brand-red/5 text-brand-red group-hover:bg-brand-red group-hover:text-white"
+                )}>
+                    {item.product_name_zh?.charAt(0) || '?'}
+                </div>
+
+                <div className="flex-grow text-center sm:text-left">
+                    <div className="flex items-center gap-2 justify-center sm:justify-start">
+                        <h4 className="font-black text-gray-800 text-base">{item.product_name_zh}</h4>
+                        {isEdited && (
+                            <span className="bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                                {t('已修改', 'Modified')}
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                        {categoryLabel}
+                    </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-200">
+                        <button
+                            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-brand-red hover:bg-white transition-all disabled:opacity-50"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onStep(item.row_id, -1);
+                            }}
+                            disabled={disabled}
+                        >
+                            <span className="material-symbols-outlined text-sm">remove</span>
+                        </button>
+                        <input
+                            className="w-16 bg-transparent text-center font-black text-gray-800 focus:outline-none"
+                            type="number"
+                            value={item.final_qty}
+                            onChange={(e) => onQtyChange(item.row_id, e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            disabled={disabled}
+                            placeholder="0"
+                        />
+                        <button
+                            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-brand-red hover:bg-white transition-all disabled:opacity-50"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onStep(item.row_id, 1);
+                            }}
+                            disabled={disabled}
+                        >
+                            <span className="material-symbols-outlined text-sm">add</span>
+                        </button>
+                    </div>
+                    <span className="text-xs font-bold text-gray-400 w-16 text-right">{displayUnit}</span>
+                </div>
+            </div>
+
+            <div className={cn(
+                "bg-gray-50/50 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-4 gap-4 px-6 py-4 text-xs transition-all duration-300",
+                isExpanded ? "block" : "hidden"
+            )}>
+                <div>
+                    <span className="block text-gray-400 font-bold uppercase tracking-wider text-[10px]">{t('覆盖天数', 'Coverage')}</span>
+                    <span className="font-mono font-bold text-gray-700">{formatNumber(item.reason_json?.cover_days)} {t('天', 'Days')}</span>
+                </div>
+                <div>
+                    <span className="block text-gray-400 font-bold uppercase tracking-wider text-[10px]">{t('日消耗', 'Daily Usage')}</span>
+                    <span className="font-mono font-bold text-gray-700">{formatNumber(item.reason_json?.daily_demand)}</span>
+                </div>
+                <div>
+                    <span className="block text-gray-400 font-bold uppercase tracking-wider text-[10px]">{t('当前库存', 'In Stock')}</span>
+                    <span className="font-mono font-bold text-gray-700">{formatNumber(item.reason_json?.current_inventory)}</span>
+                </div>
+                <div>
+                    <span className="block text-gray-400 font-bold uppercase tracking-wider text-[10px]">{t('安全缓冲', 'Safety')}</span>
+                    <span className="font-mono font-bold text-gray-700">{formatNumber(item.reason_json?.safety_buffer)}</span>
+                </div>
+                {item.loading_risk && (
+                    <div className="col-span-full flex items-center gap-2 text-brand-red font-bold">
+                        <span className="material-symbols-outlined text-sm">warning</span>
+                        <span>{t('风险：可能撑不到下次到货', 'Risk: may not last until next delivery')}</span>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
@@ -100,13 +144,10 @@ function OrderSuggestions() {
     const orderTypeToday = day === 1 ? 'MONDAY' : day === 5 ? 'FRIDAY' : null;
     const isOrderDay = Boolean(orderTypeToday);
     const nextOrderType = day === 1 ? 'MONDAY' : day === 5 ? 'FRIDAY' : (day === 2 || day === 3 || day === 4) ? 'FRIDAY' : 'MONDAY';
-    const nextOrderLabel = nextOrderType === 'MONDAY' ? '周一' : '周五';
+    const nextOrderLabel = nextOrderType === 'MONDAY' ? 'Mon' : 'Fri';
     const defaultViewType = orderTypeToday || nextOrderType;
     const [viewType, setViewType] = useState(defaultViewType);
     const orderType = isOrderDay ? orderTypeToday : viewType;
-    const subtitle = isOrderDay
-        ? (orderTypeToday === 'MONDAY' ? '今天是周一（周二到货）' : '今天是周五（周六到货）')
-        : (viewType === 'MONDAY' ? '查看周一预测（周二到货）' : '查看周五预测（周六到货）');
     const orderDate = today.toISOString().split('T')[0];
     const [suggestions, setSuggestions] = useState([]);
     const [expandedId, setExpandedId] = useState(null);
@@ -114,12 +155,39 @@ function OrderSuggestions() {
     const [saving, setSaving] = useState(false);
     const [savedOrderId, setSavedOrderId] = useState(null);
     const [message, setMessage] = useState('');
+    const { t } = useLang();
+
+    const categoryLabelMap = useMemo(() => ({
+        protein: t('蛋白', 'Protein'),
+        veg: t('蔬菜', 'Veg'),
+        frozen: t('冷冻', 'Frozen'),
+        dry: t('干货', 'Dry'),
+        sauce: t('酱料', 'Sauce'),
+        other: t('其他', 'Other')
+    }), [t]);
+
+    const unitLabel = (unit) => {
+        if (!unit) return '';
+        const text = String(unit);
+        if (text.includes('箱') || /case/i.test(text)) return t('箱', 'Case');
+        if (text.includes('袋') || /bag/i.test(text)) return t('袋', 'Bag');
+        if (text.includes('包') || /pack|pkg/i.test(text)) return t('包', 'Pack');
+        if (text.includes('基准单位') || /base/i.test(text)) return t('基准', 'Base');
+        return text;
+    };
+
+    const subtitle = isOrderDay
+        ? (orderTypeToday === 'MONDAY'
+            ? t('今天是周一（周二到货）', 'Ordering for Tuesday delivery')
+            : t('今天是周五（周六到货）', 'Ordering for Saturday delivery'))
+        : (viewType === 'MONDAY'
+            ? t('查看周一预测（周二到货）', 'Preview Monday order (Tue delivery)')
+            : t('查看周五预测（周六到货）', 'Preview Friday order (Sat delivery)'));
 
     useEffect(() => {
         setViewType(defaultViewType);
     }, [defaultViewType]);
 
-    // 自动加载订货建议，移除“生成建议”按钮以加快单屏操作
     useEffect(() => {
         let mounted = true;
         const fetchSuggestions = async () => {
@@ -127,7 +195,6 @@ function OrderSuggestions() {
             try {
                 const data = await getOrderSuggestions(orderType);
                 if (!mounted) return;
-                // 移除多余表格/筛选，仅保留核心清单数据
                 const withFinal = data.map((item, idx) => ({
                     ...item,
                     final_qty: item.suggested_qty,
@@ -178,72 +245,74 @@ function OrderSuggestions() {
             const aCatRank = aCatIndex === -1 ? 999 : aCatIndex;
             const bCatRank = bCatIndex === -1 ? 999 : bCatIndex;
             if (aCatRank !== bCatRank) return aCatRank - bCatRank;
+
             const aOrder = Number.isFinite(a.product_sort_order) ? a.product_sort_order : 9999;
             const bOrder = Number.isFinite(b.product_sort_order) ? b.product_sort_order : 9999;
             if (aOrder !== bOrder) return aOrder - bOrder;
-            const aProtein = PROTEINS.has(a.product_name_zh) ? 0 : 1;
-            const bProtein = PROTEINS.has(b.product_name_zh) ? 0 : 1;
-            if (aProtein !== bProtein) return aProtein - bProtein;
+
             return a.product_name_zh.localeCompare(b.product_name_zh, 'zh');
         });
     }, [suggestions]);
 
     const hasPositive = suggestions.some((item) => (parseFloat(item.final_qty) || 0) > 0);
     const actionsDisabled = !isOrderDay || !hasPositive;
+    const totalItems = suggestions.filter(i => (parseFloat(i.final_qty) || 0) > 0).length;
 
     return (
         <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">
             <div className="neumorphic-inset rounded-[2.5rem] p-6 space-y-6">
                 <div className="flex flex-col gap-3">
-                    <span className="text-[10px] font-mono font-bold text-[#0f766e] tracking-[0.3em] uppercase">
-                        智能订货
+                    <span className="text-[10px] font-mono font-bold text-brand-red tracking-[0.3em] uppercase">
+                        {t('智能计划', 'AI Planning')}
                     </span>
                     <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                        <h2 className="text-3xl font-bold text-gray-700 stamped-title">订货建议</h2>
-                        {subtitle && <div className="text-sm text-gray-500">{subtitle}</div>}
+                        <div>
+                            <h2 className="text-3xl font-black text-gray-800 uppercase tracking-tight">{t('订货建议', 'Order Suggestions')}</h2>
+                            <p className="text-gray-500 font-serif italic mt-1">{subtitle}</p>
+                        </div>
+
+                        {!isOrderDay && (
+                            <div className="flex bg-gray-100 p-1 rounded-xl">
+                                <button
+                                    className={cn("px-4 py-2 rounded-lg text-xs font-bold transition-all", viewType === 'MONDAY' ? "bg-white shadow-sm text-brand-red" : "text-gray-500 hover:text-gray-700")}
+                                    onClick={() => setViewType('MONDAY')}
+                                >
+                                    {t('周一', 'Mon')}
+                                </button>
+                                <button
+                                    className={cn("px-4 py-2 rounded-lg text-xs font-bold transition-all", viewType === 'FRIDAY' ? "bg-white shadow-sm text-brand-red" : "text-gray-500 hover:text-gray-700")}
+                                    onClick={() => setViewType('FRIDAY')}
+                                >
+                                    {t('周五', 'Fri')}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
 
                 {!isOrderDay && (
-                    <div className="order-warning">
-                        今天不是订货日，下一个订货日是{nextOrderLabel}（可查看预测，不能保存/导出）
-                    </div>
-                )}
-
-                {!isOrderDay && (
-                    <div className="order-view-toggle-wrap">
-                        <span>查看预测：</span>
-                        <div className="order-view-toggle" role="group" aria-label="查看预测">
-                            <button
-                                type="button"
-                                className={viewType === 'MONDAY' ? 'active' : ''}
-                                onClick={() => setViewType('MONDAY')}
-                            >
-                                周一
-                            </button>
-                            <button
-                                type="button"
-                                className={viewType === 'FRIDAY' ? 'active' : ''}
-                                onClick={() => setViewType('FRIDAY')}
-                            >
-                                周五
-                            </button>
+                    <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-4 flex items-start gap-3 text-yellow-800">
+                        <span className="material-symbols-outlined text-yellow-600">info</span>
+                        <div className="text-sm">
+                            <strong className="block font-bold">{t('仅预览', 'Preview Only')}</strong>
+                            {t(`今天不是订货日，下一个订货日是周${nextOrderLabel === 'Mon' ? '一' : '五'}`, `Today is not an ordering day. Next order day is ${nextOrderLabel}.`)}
                         </div>
                     </div>
                 )}
 
-                {loading && <div className="text-center text-gray-500">加载中...</div>}
-
-                {!loading && sortedSuggestions.length === 0 && (
-                    <div className="text-center text-gray-400">没有订货建议</div>
-                )}
-
-                {!loading && sortedSuggestions.length > 0 && (
-                    <div className="order-list custom-scrollbar max-h-[65vh] overflow-y-auto pr-1">
+                {loading ? (
+                    <div className="flex h-64 items-center justify-center text-gray-400 flex-col gap-2">
+                        <span className="material-symbols-outlined animate-spin text-3xl">refresh</span>
+                        <span className="text-xs font-bold">{t('加载中', 'Loading')}</span>
+                    </div>
+                ) : sortedSuggestions.length === 0 ? (
+                    <div className="text-center py-20 text-gray-400">{t('暂无订货建议', 'No suggestions available.')}</div>
+                ) : (
+                    <div className="space-y-3">
                         {sortedSuggestions.map((item) => {
                             const isEdited = String(item.final_qty) !== String(item.original_suggested);
                             return (
-                                <OrderRow
+                                <OrderCard
                                     key={item.row_id}
                                     item={item}
                                     isExpanded={expandedId === item.row_id}
@@ -252,6 +321,9 @@ function OrderSuggestions() {
                                     onStep={handleStep}
                                     isEdited={isEdited}
                                     disabled={!isOrderDay}
+                                    t={t}
+                                    categoryLabelMap={categoryLabelMap}
+                                    unitLabel={unitLabel}
                                 />
                             );
                         })}
@@ -260,78 +332,69 @@ function OrderSuggestions() {
             </div>
 
             <aside className="flex flex-col gap-6">
-                <div className="neumorphic-flat rounded-3xl p-6 flex flex-col gap-6">
-                    <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-mono uppercase tracking-[0.3em] text-gray-400 font-bold">
-                            手动调整
-                        </span>
-                        <button className="neumorphic-button p-2 rounded-lg text-gray-500">
-                            <span className="material-symbols-outlined text-sm">tune</span>
-                        </button>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
-                        {['7','8','9','4','5','6','1','2','3','0','.'].map((key) => (
-                            <button
-                                key={key}
-                                className="neumorphic-button rounded-2xl flex items-center justify-center text-2xl font-bold text-gray-600 border border-white/40"
-                                type="button"
-                            >
-                                {key}
-                            </button>
-                        ))}
+                <div className="bg-brand-red text-white rounded-3xl p-8 shadow-2xl relative overflow-hidden group">
+                    <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+
+                    <div className="relative z-10 flex flex-col items-center text-center">
+                        <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center mb-4 backdrop-blur-sm border border-white/20">
+                            <span className="material-symbols-outlined text-3xl">shopping_cart</span>
+                        </div>
+                        <h3 className="font-black uppercase tracking-widest text-lg">{t('当前订货', 'Current Order')}</h3>
+                        <div className="mt-4 mb-6">
+                            <span className="text-5xl font-black">{totalItems}</span>
+                            <span className="text-sm font-bold opacity-70 uppercase tracking-wider block mt-1">{t('项', 'Items')}</span>
+                        </div>
+
                         <button
-                            className="neumorphic-button rounded-2xl flex items-center justify-center text-red-500 border border-white/40"
-                            type="button"
+                            className="w-full bg-white text-brand-red py-4 rounded-xl font-black uppercase tracking-widest text-xs hover:bg-gray-50 transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            disabled={actionsDisabled || saving}
+                            onClick={async () => {
+                                if (actionsDisabled) return;
+                                setSaving(true);
+                                setMessage('');
+                                try {
+                                    const payload = {
+                                        order: {
+                                            order_date: orderDate,
+                                            order_type: orderType,
+                                            status: "DRAFT"
+                                        },
+                                        lines: suggestions.map(item => ({
+                                            product_id: item.product_id,
+                                            suggested_qty: item.suggested_qty,
+                                            final_qty: parseFloat(item.final_qty) || 0,
+                                            unit: item.unit,
+                                            reason_json: item.reason_json,
+                                            notes: item.notes || ''
+                                        }))
+                                    };
+                                    const res = await createOrder(payload);
+                                    setSavedOrderId(res.id);
+                                    setMessage(t('订货单已保存', 'Order saved'));
+                                } catch (err) {
+                                    console.error(err);
+                                    setMessage(t('保存失败', 'Save failed'));
+                                }
+                                setSaving(false);
+                            }}
                         >
-                            <span className="material-symbols-outlined text-3xl">backspace</span>
+                            {saving ? t('保存中...', 'Saving...') : t('提交订货', 'Submit Order')}
                         </button>
+
+                        {message && (
+                            <div className="mt-4 font-bold text-xs bg-black/20 px-3 py-1 rounded-full">
+                                {message}
+                            </div>
+                        )}
                     </div>
-                    <button className="neumorphic-button mt-2 py-4 rounded-2xl font-bold text-gray-600 uppercase tracking-[0.2em] flex items-center justify-center gap-3">
-                        重新计算 <span className="material-symbols-outlined text-[#0f766e]">refresh</span>
-                    </button>
                 </div>
 
                 <div className="neumorphic-flat rounded-3xl p-6 flex flex-col gap-4">
-                    <div className="text-[11px] font-mono uppercase tracking-[0.4em] text-gray-500 text-center">
-                        确认订货
+                    <div className="text-[10px] font-mono uppercase tracking-[0.3em] text-gray-400 font-bold text-center mb-2">
+                        {t('导出', 'Export Options')}
                     </div>
                     <button
-                        className="neumorphic-button py-3 rounded-xl font-mono text-xs uppercase tracking-widest text-gray-600"
-                        disabled={actionsDisabled || saving}
-                        onClick={async () => {
-                            if (actionsDisabled) return;
-                            setSaving(true);
-                            setMessage('');
-                            try {
-                                const payload = {
-                                    order: {
-                                        order_date: orderDate,
-                                        order_type: orderType,
-                                        status: "DRAFT"
-                                    },
-                                    lines: suggestions.map(item => ({
-                                        product_id: item.product_id,
-                                        suggested_qty: item.suggested_qty,
-                                        final_qty: parseFloat(item.final_qty) || 0,
-                                        unit: item.unit,
-                                        reason_json: item.reason_json,
-                                        notes: item.notes || ''
-                                    }))
-                                };
-                                const res = await createOrder(payload);
-                                setSavedOrderId(res.id);
-                                setMessage('订货单已保存');
-                            } catch (err) {
-                                console.error(err);
-                                setMessage('保存失败');
-                            }
-                            setSaving(false);
-                        }}
-                    >
-                        {saving ? '保存中...' : '保存为订货单'}
-                    </button>
-                    <button
-                        className="neumorphic-button py-3 rounded-xl font-mono text-xs uppercase tracking-widest text-gray-600"
+                        className="neumorphic-button w-full py-3 rounded-xl text-gray-600 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-3 disabled:opacity-50"
                         disabled={actionsDisabled || !savedOrderId}
                         onClick={async () => {
                             if (!savedOrderId || actionsDisabled) return;
@@ -339,38 +402,16 @@ function OrderSuggestions() {
                             const url = window.URL.createObjectURL(blob);
                             const link = document.createElement('a');
                             link.href = url;
-                            link.download = `订单_${orderType}_${orderDate}.csv`;
+                            link.download = `Order_${orderType}_${orderDate}.csv`;
                             document.body.appendChild(link);
                             link.click();
                             link.remove();
                             window.URL.revokeObjectURL(url);
                         }}
                     >
-                        导出 CSV
+                        <span className="material-symbols-outlined text-sm">download</span>
+                        {t('下载 CSV', 'Download CSV')}
                     </button>
-                    {message && (
-                        <div className={`text-center text-xs font-semibold ${message.includes('失败') ? 'text-red-500' : 'text-green-600'}`}>
-                            {message}
-                        </div>
-                    )}
-
-                    <div className="slider-track h-20 rounded-[1.5rem] flex items-center p-3 relative">
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <span className="text-xs font-bold text-gray-400 uppercase tracking-[0.3em] opacity-60">
-                                滑动确认
-                            </span>
-                        </div>
-                        <div className="slider-handle h-14 w-32 rounded-[1.2rem] knurled-texture flex items-center justify-center cursor-pointer border border-white/70 group transition-all z-10">
-                            <div className="flex gap-2">
-                                <span className="material-symbols-outlined text-gray-400 group-hover:text-[#0f766e] transition-colors">chevron_right</span>
-                                <span className="material-symbols-outlined text-gray-400 group-hover:text-[#0f766e] transition-colors">chevron_right</span>
-                                <span className="material-symbols-outlined text-gray-400 group-hover:text-[#0f766e] transition-colors">chevron_right</span>
-                            </div>
-                        </div>
-                    </div>
-                    <p className="text-[10px] font-mono text-gray-400 text-center leading-relaxed uppercase tracking-widest">
-                        滑动确认后提交采购单
-                    </p>
                 </div>
             </aside>
         </div>
