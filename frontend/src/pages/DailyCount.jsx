@@ -1,13 +1,11 @@
-import React, { useEffect, useState, useMemo } from 'react';
+﻿import React, { useEffect, useState, useMemo } from 'react';
 import {
     DndContext,
     closestCenter,
     KeyboardSensor,
     PointerSensor,
     useSensor,
-    useSensors,
-    DragOverlay,
-    defaultDropAnimationSideEffects
+    useSensors
 } from '@dnd-kit/core';
 import {
     arrayMove,
@@ -17,38 +15,25 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import {
-    ChevronDown,
-    GripVertical,
-    Minus,
-    Plus,
-    Trash2,
-    Search,
-    Calendar,
-    Save,
-    Loader2
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 import { getProducts, saveDailyCount, updateProduct } from '../api';
+import { useLang } from '../i18n';
 
-// --- Utility Components ---
 function cn(...inputs) {
     return twMerge(clsx(inputs));
 }
 
-// --- Sortable Item Component ---
 function SortableProductCard({
     product,
-    entries,
-    selections,
     variants,
+    selections,
     onUpdateEntry,
-    onAddEntry,
-    onRemoveEntry,
-    containerLabels
+    isActive,
+    onFocus,
+    containerLabelMap,
+    t
 }) {
     const {
         attributes,
@@ -66,542 +51,389 @@ function SortableProductCard({
         position: 'relative',
     };
 
-    const hasVariants = variants.length > 0;
-    const selectedIds = new Set(entries.map(e => e.variantId).filter(Boolean));
+    const imageUrl = product.image_url || null;
+    const productId = product.id;
+    const entries = selections[productId] && selections[productId].length > 0
+        ? selections[productId]
+        : [{ variantId: variants[0]?.id || '', qty: '' }];
+
+    const primaryContainer = variants[0]?.container;
+    const containerLabel = primaryContainer
+        ? (containerLabelMap[primaryContainer] || primaryContainer)
+        : t('单位', 'Unit');
 
     return (
-        <div ref={setNodeRef} style={style} className={cn("group mb-4", isDragging && "opacity-60")}>
-            <div className={cn(
-                "overflow-hidden rounded-2xl border bg-white/40 transition-all duration-200",
-                isDragging ? "border-white/80 shadow-lg ring-1 ring-white/60" : "border-white/50 hover:border-white/80"
-            )}>
-                {/* Header */}
-                <div className="flex items-center justify-between border-b border-white/40 bg-white/30 px-4 py-3">
-                    <div className="flex items-center gap-3">
-                        <div
-                            {...attributes}
-                            {...listeners}
-                            className="flex h-8 w-8 cursor-grab items-center justify-center rounded-lg text-gray-400 opacity-0 transition-all hover:bg-white/60 active:cursor-grabbing group-hover:opacity-100"
-                        >
-                            <GripVertical className="h-4 w-4" />
+        <div ref={setNodeRef} style={style} className={cn("group transition-transform", isDragging && "z-50 opacity-80")}>
+            <div
+                className={cn(
+                    "p-6 flex flex-col sm:flex-row items-center gap-6 transition-all border border-transparent rounded-2xl",
+                    isActive ? "bg-white shadow-lg border-brand-red/10 ring-1 ring-brand-red/20" : "hover:bg-white/80 bg-white/40 shadow-sm"
+                )}
+                onClick={() => onFocus(product.id)}
+            >
+                <div
+                    {...attributes}
+                    {...listeners}
+                    className="w-16 h-16 rounded-full border-2 border-white shadow-sm overflow-hidden flex-shrink-0 relative cursor-grab active:cursor-grabbing"
+                >
+                    {imageUrl ? (
+                        <img src={imageUrl} alt={product.name_zh} className="w-full h-full object-cover" />
+                    ) : (
+                        <div className="w-full h-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-400">
+                            {t('无图', 'No image')}
                         </div>
-                        <span className="font-semibold text-gray-800">{product.name_zh}</span>
-                        {product.name_en && (
-                            <span className="text-xs text-gray-400 hidden sm:inline-block">{product.name_en}</span>
-                        )}
-                    </div>
+                    )}
                 </div>
 
-                {/* Content */}
-                <div className="divide-y divide-white/40 p-4">
-                    <AnimatePresence initial={false}>
-                        {entries.map((entry, index) => {
-                            const currentVariantId = entry.variantId || (variants[0] ? variants[0].id : '');
-                            const qtyValue = entry.qty === '' ? '' : Number(entry.qty);
-
-                            return (
-                                <motion.div
-                                    key={index}
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: 'auto' }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 md:flex-row md:items-center"
-                                >
-                                    {/* Variant Select */}
-                                    <div className="relative flex-1">
-                                        <select
-                                            value={currentVariantId}
-                                            onChange={e => {
-                                                const nextId = parseInt(e.target.value);
-                                                onUpdateEntry(product.id, index, { variantId: Number.isNaN(nextId) ? '' : nextId });
-                                            }}
-                                            disabled={!hasVariants}
-                                            className="w-full appearance-none rounded-xl border border-white/70 bg-white/40 px-4 py-2.5 pr-10 text-sm font-medium text-gray-700 transition-colors focus:border-[#0f766e]/40 focus:outline-none focus:ring-1 focus:ring-[#0f766e]/30"
-                                        >
-                                            {variants.length === 0 && <option value="">无规格</option>}
-                                            {variants.map(v => (
-                                                <option key={v.id} value={v.id} disabled={selectedIds.has(v.id) && v.id !== currentVariantId}>
-                                                    {v.display_name_zh} ({containerLabels[v.container] || v.container})
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                    </div>
-
-                                    {/* Qty & Actions */}
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex items-center rounded-xl border border-white/60 bg-white/40 p-1">
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    const current = parseFloat(entry.qty) || 0;
-                                                    const next = Math.max(0, current - 1);
-                                                    onUpdateEntry(product.id, index, { qty: String(next) });
-                                                }}
-                                                disabled={!hasVariants}
-                                                className="neumorphic-button flex h-8 w-8 items-center justify-center rounded-lg text-gray-600 transition-transform active:scale-95 disabled:opacity-50 hover:text-[#0f766e]"
-                                            >
-                                                <Minus className="h-3.5 w-3.5" />
-                                            </button>
-                                            <input
-                                                type="number"
-                                                className="w-16 bg-transparent text-center text-sm font-semibold text-gray-800 focus:outline-none"
-                                                placeholder="0"
-                                                value={qtyValue}
-                                                onChange={e => onUpdateEntry(product.id, index, { qty: e.target.value })}
-                                                disabled={!hasVariants}
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    const current = parseFloat(entry.qty) || 0;
-                                                    const next = current + 1;
-                                                    onUpdateEntry(product.id, index, { qty: String(next) });
-                                                }}
-                                                disabled={!hasVariants}
-                                                className="neumorphic-button flex h-8 w-8 items-center justify-center rounded-lg text-gray-600 transition-transform active:scale-95 disabled:opacity-50 hover:text-[#0f766e]"
-                                            >
-                                                <Plus className="h-3.5 w-3.5" />
-                                            </button>
-                                        </div>
-
-                                        {entries.length > 1 && (
-                                            <button
-                                                type="button"
-                                                onClick={() => onRemoveEntry(product.id, index)}
-                                                className="neumorphic-button flex h-10 w-10 items-center justify-center rounded-xl text-gray-400 transition-colors hover:text-red-500"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </button>
-                                        )}
-                                    </div>
-                                </motion.div>
-                            );
-                        })}
-                    </AnimatePresence>
+                <div className="flex-grow text-center sm:text-left space-y-1">
+                    <h4 className="font-black text-gray-800 text-lg leading-tight">{product.name_zh}</h4>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest font-mono">
+                        {containerLabel} / ID: {product.id.toString().padStart(3, '0')}
+                    </p>
                 </div>
 
-                {/* Footer Action */}
-                <div className="border-t border-white/40 bg-white/20 px-4 py-2">
-                    <button
-                        type="button"
-                        onClick={() => onAddEntry(product.id, variants, selectedIds)}
-                        disabled={!hasVariants}
-                        className="text-xs font-semibold text-[#0f766e] transition-colors hover:text-[#0b5d58] disabled:opacity-50"
-                    >
-                        + 添加规格
-                    </button>
+                <div className="flex flex-col gap-2 w-full sm:w-auto">
+                    {entries.map((entry, idx) => (
+                        <div key={idx} className="flex items-center gap-3 bg-white p-1 rounded-full border border-gray-200 shadow-sm">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const next = Math.max(0, (parseFloat(entry.qty) || 0) - 1);
+                                    onUpdateEntry(product.id, idx, { qty: String(next) });
+                                }}
+                                className="w-10 h-10 rounded-full bg-gray-50 hover:bg-brand-red hover:text-white text-gray-600 transition-colors flex items-center justify-center"
+                            >
+                                <span className="material-symbols-outlined text-lg">remove</span>
+                            </button>
+
+                            <input
+                                type="number"
+                                value={entry.qty}
+                                placeholder={isActive ? "|" : "0"}
+                                onChange={(e) => onUpdateEntry(product.id, idx, { qty: e.target.value })}
+                                onFocus={() => onFocus(product.id)}
+                                className="w-20 text-center border-none bg-transparent font-black text-xl text-brand-red focus:ring-0 p-0 placeholder-gray-300"
+                            />
+
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    const next = (parseFloat(entry.qty) || 0) + 1;
+                                    onUpdateEntry(product.id, idx, { qty: String(next) });
+                                }}
+                                className="w-10 h-10 rounded-full bg-gray-50 hover:bg-brand-red hover:text-white text-gray-600 transition-colors flex items-center justify-center"
+                            >
+                                <span className="material-symbols-outlined text-lg">add</span>
+                            </button>
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>
     );
 }
 
-
 function DailyCount() {
-    // --- State ---
     const [products, setProducts] = useState([]);
     const [selections, setSelections] = useState({});
     const [search, setSearch] = useState('');
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [activeProductId, setActiveProductId] = useState(null);
     const [loading, setLoading] = useState(false);
     const [saveLoading, setSaveLoading] = useState(false);
-    const [error, setError] = useState(null);
     const [message, setMessage] = useState('');
+    const { t } = useLang();
 
-    // --- Refs / Local Logic ---
-    const [lastVariantMap, setLastVariantMap] = useState(() => {
-        try {
-            const stored = localStorage.getItem('m2go:lastVariantByProduct');
-            return stored ? JSON.parse(stored) : {};
-        } catch { return {}; }
-    });
+    const containerLabelMap = useMemo(() => ({
+        case: t('箱', 'Case'),
+        bag: t('袋', 'Bag'),
+        box_2inch: t('2寸盒', '2" Box'),
+        box_4inch: t('4寸盒', '4" Box')
+    }), [t]);
 
-    // Use stable IDs for category order logic from local storage
-    const defaultCategoryOrder = ['protein', 'veg', 'frozen'];
+    const categoryLabelMap = useMemo(() => ({
+        protein: t('蛋白', 'Protein'),
+        veg: t('蔬菜', 'Veg'),
+        frozen: t('冷冻', 'Frozen'),
+        dry: t('干货', 'Dry'),
+        sauce: t('酱料', 'Sauce'),
+        other: t('其他', 'Other')
+    }), [t]);
 
-    // --- Constants ---
-    const categoryLabels = { protein: '蛋白', veg: '蔬菜', frozen: '冷冻' };
-    const containerLabels = { case: '整箱', bag: '袋子', box_2inch: '2寸盒', box_4inch: '4寸盒' };
+    const handleKeypad = (key) => {
+        if (!activeProductId) return;
 
-    // --- Dnd Base Configuration ---
-    const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), // Prevent accidental drags
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-    );
+        const product = products.find(p => p.id === activeProductId);
+        if (!product) return;
 
-    // --- Effects ---
-    useEffect(() => {
-        loadProducts();
-    }, []);
+        const currentEntries = selections[activeProductId] || [{ variantId: product.variants?.[0]?.id, qty: '' }];
+        const currentQty = String(currentEntries[0].qty || '');
 
-    const loadProducts = async () => {
-        setLoading(true);
-        try {
-            const data = await getProducts();
-            setProducts(Array.isArray(data) ? data : []);
-        } catch (err) {
-            setError('加载失败，请重试');
-        } finally {
-            setLoading(false);
+        let newQty = currentQty;
+        if (key === 'backspace') {
+            newQty = currentQty.slice(0, -1);
+        } else if (key === '.') {
+            if (!currentQty.includes('.')) newQty = currentQty + '.';
+        } else {
+            newQty = currentQty + key;
         }
+
+        const newEntries = [...currentEntries];
+        newEntries[0] = { ...newEntries[0], qty: newQty };
+
+        setSelections(prev => ({
+            ...prev,
+            [activeProductId]: newEntries
+        }));
     };
 
-    // --- Derived State ---
+    const handleNextItem = () => {
+        if (!activeProductId) return;
+        setActiveProductId(null);
+    };
+
+    useEffect(() => {
+        setLoading(true);
+        getProducts().then(data => {
+            setProducts(Array.isArray(data) ? data : []);
+            setLoading(false);
+        }).catch(() => setLoading(false));
+    }, []);
+
     const filteredProducts = useMemo(() => {
         if (!search.trim()) return products;
         const q = search.toLowerCase();
-        return products.filter(p =>
-            (p.name_zh || '').toLowerCase().includes(q) ||
-            (p.name_en || '').toLowerCase().includes(q)
-        );
+        return products.filter(p => (p.name_zh || '').toLowerCase().includes(q));
     }, [products, search]);
 
     const groupedProducts = useMemo(() => {
         const groups = {};
-        // Initialize groups based on default order + extras
-        const cats = new Set([...defaultCategoryOrder, ...filteredProducts.map(p => p.category)]);
-
-        cats.forEach(c => groups[c] = []);
         filteredProducts.forEach(p => {
             if (!groups[p.category]) groups[p.category] = [];
             groups[p.category].push(p);
         });
-
-        // Ensure internal sort within groups (by sort_order)
-        Object.keys(groups).forEach(cat => {
-            groups[cat].sort((a, b) => {
-                const aOrder = a.sort_order ?? 9999;
-                const bOrder = b.sort_order ?? 9999;
-                return aOrder - bOrder || (a.name_zh || '').localeCompare(b.name_zh || '');
-            });
+        Object.keys(groups).forEach(k => {
+            groups[k].sort((a, b) => (a.sort_order || 999) - (b.sort_order || 999));
         });
-
         return groups;
     }, [filteredProducts]);
 
-    // --- Business Logic Helpers ---
-    const getVariantOptions = (product) => {
-        const variants = Array.isArray(product.variants) ? product.variants : [];
-        return [...variants].sort((a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999));
-    };
+    const categories = ['protein', 'veg', 'frozen', 'dry', 'sauce', 'other'];
+    const orderedCategories = [...new Set([...categories, ...Object.keys(groupedProducts)])].filter(c => groupedProducts[c]?.length > 0);
 
-    const getEntries = (productId, variants) => {
-        if (selections[productId] && selections[productId].length > 0) return selections[productId];
+    const activeProduct = products.find(p => p.id === activeProductId);
+    const activeQty = activeProduct && selections[activeProduct.id] ? selections[activeProduct.id][0]?.qty : '';
 
-        // Logic to pre-fill based on history or defaults
-        const rememberedId = lastVariantMap[productId];
-        const validRemembered = variants.find(v => v.id === rememberedId);
-        if (validRemembered) return [{ variantId: validRemembered.id, qty: '' }];
+    const totalItems = filteredProducts.length;
+    const itemsCounted = Object.keys(selections).filter(pid => selections[pid].some(e => e.qty !== '')).length;
+    const progressPercent = totalItems > 0 ? Math.round((itemsCounted / totalItems) * 100) : 0;
 
-        const rawVariant = variants.find(v => v.form === 'RAW') || variants[0];
-        const cookedVariant = variants.find(v => v.form === 'COOKED_CHILL' && v.container === 'case');
-
-        const defaults = [];
-        if (rawVariant) defaults.push({ variantId: rawVariant.id, qty: '' });
-        if (cookedVariant && cookedVariant.id !== rawVariant?.id) defaults.push({ variantId: cookedVariant.id, qty: '' });
-
-        return defaults.length ? defaults : [{ variantId: '', qty: '' }];
-    };
-
-    // --- Event Handlers ---
-    const handleUpdateEntry = (productId, index, patch) => {
-        const product = products.find(p => p.id === productId);
-        const variants = getVariantOptions(product);
-        const fallback = variants[0]?.id || '';
-
+    const handleUpdateEntry = (pid, idx, patch) => {
         setSelections(prev => {
-            const list = prev[productId] ? [...prev[productId]] : getEntries(productId, variants);
-            // Ensure we are working with a valid list even if state was empty (first interaction)
-            if (!prev[productId] && list.length === 0) {
-                // Should not happen due to getEntries logic but safe guard
-                list.push({ variantId: fallback, qty: '' });
-            }
-            list[index] = { ...list[index], ...patch };
-            return { ...prev, [productId]: list };
+            const product = products.find(p => p.id === pid);
+            const current = prev[pid] ? [...prev[pid]] : [{ variantId: product.variants?.[0]?.id, qty: '' }];
+            current[idx] = { ...current[idx], ...patch };
+            return { ...prev, [pid]: current };
         });
-    };
-
-    const handleAddEntry = (productId, variants, selectedIds) => {
-        const fallback = variants.find(v => !selectedIds.has(v.id)) || variants[0];
-        if (!fallback) return;
-
-        setSelections(prev => {
-            const list = prev[productId] ? [...prev[productId]] : getEntries(productId, variants);
-            list.push({ variantId: fallback.id, qty: '' });
-            return { ...prev, [productId]: list };
-        });
-    };
-
-    const handleRemoveEntry = (productId, index) => {
-        const product = products.find(p => p.id === productId);
-        const variants = getVariantOptions(product);
-        const fallback = variants[0]?.id || '';
-
-        setSelections(prev => {
-            const list = prev[productId] ? [...prev[productId]] : getEntries(productId, variants);
-            list.splice(index, 1);
-            if (list.length === 0) return { ...prev, [productId]: [{ variantId: fallback, qty: '' }] };
-            return { ...prev, [productId]: list };
-        });
+        setActiveProductId(pid);
     };
 
     const handleDragEnd = async (event) => {
         const { active, over } = event;
         if (!over || active.id === over.id) return;
 
-        const activeProduct = products.find(p => p.id === active.id);
-        const overProduct = products.find(p => p.id === over.id);
+        const activeItem = products.find(p => p.id === active.id);
+        const overItem = products.find(p => p.id === over.id);
 
-        if (!activeProduct || !overProduct || activeProduct.category !== overProduct.category) return;
+        if (activeItem && overItem && activeItem.category === overItem.category) {
+            const category = activeItem.category;
+            const items = groupedProducts[category];
+            const oldIndex = items.findIndex(p => p.id === active.id);
+            const newIndex = items.findIndex(p => p.id === over.id);
 
-        const category = activeProduct.category;
-        const currentGroup = groupedProducts[category];
-        const oldIndex = currentGroup.findIndex(p => p.id === active.id);
-        const newIndex = currentGroup.findIndex(p => p.id === over.id);
+            const newOrder = arrayMove(items, oldIndex, newIndex);
+            const newMap = new Map(newOrder.map((p, i) => [p.id, i + 1]));
+            setProducts(prev => prev.map(p => newMap.has(p.id) ? { ...p, sort_order: newMap.get(p.id) } : p));
 
-        const newGroupOrder = arrayMove(currentGroup, oldIndex, newIndex);
-
-        // Optimistic Update
-        const prevProducts = products;
-        const orderMap = new Map(newGroupOrder.map((p, idx) => [p.id, idx + 1]));
-
-        setProducts(prev => prev.map(p => {
-            if (p.category === category && orderMap.has(p.id)) {
-                return { ...p, sort_order: orderMap.get(p.id) };
-            }
-            return p;
-        }));
-
-        // Send to backend
-        try {
-            await Promise.all(newGroupOrder.map((p, idx) =>
-                updateProduct(p.id, { sort_order: idx + 1 })
-            ));
-        } catch (err) {
-            console.error("Failed to reorder:", err);
-            setError("排序保存失败，已恢复原顺序");
-            setProducts(prevProducts);
+            await Promise.all(newOrder.map((p, i) => updateProduct(p.id, { sort_order: i + 1 })));
         }
     };
 
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
     const handleSubmit = async () => {
         setSaveLoading(true);
-        setMessage('');
         try {
-            // Flatten selections logic
             const promises = [];
-
-            // We need to iterate all products to include those that might not be in 'selections' state 
-            // but have default entries visible. Wait, the state `selections` only populates on interaction.
-            // If user didn't touch a product, no entry is saved? Correct.
-            // "getEntries" returns UI state, but if it's not in `selections`, it means user touched nothing.
-            // HOWEVER: If user "sees" defaults and wants to save them as 0, they usually type 0.
-            // Requirement logic: "entered qty". Empty string = ignore.
-
-            Object.keys(selections).forEach(productId => {
-                const entries = selections[productId];
-                entries.forEach(entry => {
-                    const qty = parseFloat(entry.qty);
-                    if (!entry.variantId || isNaN(qty)) return;
-                    promises.push(saveDailyCount({
-                        date: date,
-                        variant_id: parseInt(entry.variantId),
-                        counted_qty: qty
-                    }));
+            Object.entries(selections).forEach(([pid, entries]) => {
+                entries.forEach(e => {
+                    const val = parseFloat(e.qty);
+                    if (!isNaN(val)) {
+                        promises.push(saveDailyCount({
+                            date: new Date().toISOString().split('T')[0],
+                            variant_id: e.variantId,
+                            counted_qty: val
+                        }));
+                    }
                 });
             });
 
-            if (promises.length === 0) {
-                setMessage('没有填写任何数量');
-                setSaveLoading(false);
-                return;
+            if (promises.length > 0) {
+                await Promise.all(promises);
+                setMessage(t('已保存', 'Saved'));
+                setTimeout(() => setMessage(''), 3000);
+                setSelections({});
+                setActiveProductId(null);
+            } else {
+                setMessage(t('没有可保存的数量', 'No counts to save'));
+                setTimeout(() => setMessage(''), 2000);
             }
-
-            await Promise.all(promises);
-
-            // Update "last used" map
-            const newMap = { ...lastVariantMap };
-            Object.entries(selections).forEach(([pid, entries]) => {
-                const valid = entries.filter(e => !isNaN(parseFloat(e.qty)));
-                if (valid.length === 1) newMap[pid] = valid[0].variantId;
-                else if (valid.length > 1) delete newMap[pid];
-            });
-            localStorage.setItem('m2go:lastVariantByProduct', JSON.stringify(newMap));
-            setLastVariantMap(newMap);
-
-            setMessage('盘点提交成功！');
-            setSelections({});
-
-            // Auto hide success message
-            setTimeout(() => setMessage(''), 3000);
-        } catch (err) {
-            console.error(err);
-            setError('保存失败，请重试');
+        } catch (e) {
+            console.error(e);
+            setMessage(t('保存失败', 'Save failed'));
         } finally {
             setSaveLoading(false);
         }
     };
 
-
-    // --- Render ---
-    if (loading && products.length === 0) {
-        return <div className="flex h-64 items-center justify-center text-gray-400"><Loader2 className="animate-spin" /></div>;
-    }
-
-    const orderedCategories = ['protein', 'veg', 'frozen'].filter(c => groupedProducts[c]?.length > 0);
-    // Add any other categories that might exist
-    Object.keys(groupedProducts).forEach(c => {
-        if (!orderedCategories.includes(c) && groupedProducts[c]?.length > 0) orderedCategories.push(c);
-    });
-
     return (
-        <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-        >
-            <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_320px]">
-                <div className="neumorphic-inset rounded-[2.5rem] p-6 space-y-8">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-                        <div>
-                            <span className="text-[10px] font-mono font-bold text-[#0f766e] tracking-[0.3em] uppercase block mb-1">
-                                库存盘点
-                            </span>
-                            <h2 className="text-3xl font-bold text-gray-700 stamped-title">每日盘点</h2>
-                            <p className="text-sm text-gray-500">记得定期保存并同步库存</p>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            <div className="relative">
-                                <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                                <input
-                                    type="date"
-                                    value={date}
-                                    onChange={e => setDate(e.target.value)}
-                                    className="pl-9 pr-4"
-                                />
-                            </div>
-                            <button
-                                onClick={handleSubmit}
-                                disabled={saveLoading}
-                                className={cn(
-                                    "neumorphic-button flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-mono uppercase tracking-widest text-gray-600",
-                                    message && "text-green-600"
-                                )}
-                            >
-                                {saveLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                {message ? '已保存' : '保存'}
-                            </button>
-                        </div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <div className="flex flex-col md:flex-row justify-between items-end border-b-2 border-brand-red/10 pb-6 mb-8">
+                <div>
+                    <h2 className="text-4xl lg:text-5xl font-black text-brand-red uppercase tracking-tight">{t('每日盘点', 'Daily Count')}</h2>
+                    <p className="mt-2 text-gray-500 font-serif italic text-lg">{t('请在交班前核对实物库存', 'Please verify physical inventory before shift end.')}</p>
+                </div>
+                <div className="mt-4 md:mt-0 flex items-center space-x-4">
+                    <div className="bg-white/60 backdrop-blur px-4 py-2 rounded-lg border border-brand-red/10 text-right">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('日期', 'Date')}</p>
+                        <p className="font-bold text-gray-800">{new Date().toLocaleDateString()}</p>
                     </div>
+                </div>
+            </div>
 
-                    <div className="relative">
-                        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <div className="flex flex-col lg:flex-row gap-8 items-start">
+                <div className="flex-1 space-y-8 w-full">
+                    <div className="relative group">
+                        <span className="material-symbols-outlined absolute left-4 top-3.5 text-gray-400 group-focus-within:text-brand-red transition-colors">search</span>
                         <input
                             type="text"
-                            placeholder="搜索商品 (中文/英文)"
+                            className="w-full pl-12 pr-4 py-3 rounded-xl border-none shadow-sm focus:ring-2 focus:ring-brand-red/20 bg-white placeholder-gray-400 text-sm font-bold"
+                            placeholder={t('搜索食材', 'Search items')}
                             value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            className="w-full pl-10 pr-4"
+                            onChange={(e) => setSearch(e.target.value)}
                         />
                     </div>
 
-                    {error && <div className="text-xs font-semibold text-red-500">{error}</div>}
-
-                    <div className="space-y-8">
-                        {orderedCategories.map(cat => (
-                            <div key={cat} className="space-y-3">
-                                <h3 className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-gray-400">
-                                    <span className="h-px flex-1 bg-white/60"></span>
-                                    {categoryLabels[cat] || cat}
-                                    <span className="h-px flex-1 bg-white/60"></span>
+                    {orderedCategories.map(cat => (
+                        <section key={cat} className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 relative group">
+                            <div className="bg-brand-red/5 px-6 py-4 flex items-center justify-between border-b border-brand-red/10">
+                                <h3 className="text-brand-red font-black uppercase tracking-wider flex items-center gap-3 text-lg">
+                                    <span className="material-symbols-outlined">
+                                        {cat === 'protein' ? 'restaurant' : cat === 'veg' ? 'eco' : 'inventory_2'}
+                                    </span>
+                                    {categoryLabelMap[cat] || cat}
                                 </h3>
-
-                                <SortableContext
-                                    items={groupedProducts[cat].map(p => p.id)}
-                                    strategy={verticalListSortingStrategy}
-                                >
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t('项', 'Items')}</span>
+                                    <span className="bg-brand-red text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                                        {groupedProducts[cat].length}
+                                    </span>
+                                </div>
+                            </div>
+                            <div className="divide-y divide-gray-50 bg-gray-50/50">
+                                <SortableContext items={groupedProducts[cat].map(p => p.id)} strategy={verticalListSortingStrategy}>
                                     {groupedProducts[cat].map(product => (
                                         <SortableProductCard
                                             key={product.id}
                                             product={product}
-                                            variants={getVariantOptions(product)}
+                                            variants={product.variants || []}
                                             selections={selections}
-                                            entries={getEntries(product.id, getVariantOptions(product))}
                                             onUpdateEntry={handleUpdateEntry}
-                                            onAddEntry={handleAddEntry}
-                                            onRemoveEntry={handleRemoveEntry}
-                                            containerLabels={containerLabels}
+                                            onFocus={setActiveProductId}
+                                            isActive={activeProductId === product.id}
+                                            containerLabelMap={containerLabelMap}
+                                            t={t}
                                         />
                                     ))}
                                 </SortableContext>
                             </div>
-                        ))}
-
-                        {orderedCategories.length === 0 && (
-                            <div className="py-16 text-center text-gray-400">
-                                <p>没有找到相关商品</p>
-                            </div>
-                        )}
-                    </div>
+                        </section>
+                    ))}
                 </div>
 
-                <aside className="flex flex-col gap-6">
-                    <div className="neumorphic-flat rounded-3xl p-6 flex flex-col gap-6">
-                        <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-mono uppercase tracking-[0.3em] text-gray-400 font-bold">
-                                快捷输入
-                            </span>
-                            <button className="neumorphic-button p-2 rounded-lg text-gray-500">
-                                <span className="material-symbols-outlined text-sm">settings</span>
-                            </button>
+                <div className="lg:w-80 w-full lg:sticky lg:top-8 space-y-6">
+                    <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 p-6">
+                        <div className="text-center mb-6 border-b border-gray-100 pb-4">
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">{t('快捷输入', 'Quick Input')}</p>
+                            <div className="h-16 flex items-center justify-center bg-gray-50 rounded-lg border border-gray-200 mb-2">
+                                <span className="text-4xl font-black text-brand-red">{activeQty || '--'}</span>
+                                {activeProductId && <span className="animate-pulse text-brand-red ml-1">|</span>}
+                            </div>
+                            <p className="text-[10px] text-gray-400 truncate px-4">
+                                {activeProductId
+                                    ? t(`正在编辑：${activeProduct?.name_zh}`, `Editing: ${activeProduct?.name_zh}`)
+                                    : t('请选择要编辑的项目', 'Select an item to edit')}
+                            </p>
                         </div>
-                        <div className="grid grid-cols-3 gap-4">
-                            {['7','8','9','4','5','6','1','2','3','0','.'].map((key) => (
+                        <div className="grid grid-cols-3 gap-3 mb-6">
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, '.', 0].map(k => (
                                 <button
-                                    key={key}
-                                    className="neumorphic-button rounded-2xl flex items-center justify-center text-2xl font-bold text-gray-600 border border-white/40"
-                                    type="button"
+                                    key={k}
+                                    onClick={() => handleKeypad(String(k))}
+                                    className="aspect-square rounded-xl bg-gray-50 hover:bg-gray-100 text-xl font-bold text-gray-700 transition-colors shadow-sm border border-gray-200 active:scale-95"
                                 >
-                                    {key}
+                                    {k}
                                 </button>
                             ))}
                             <button
-                                className="neumorphic-button rounded-2xl flex items-center justify-center text-red-500 border border-white/40"
-                                type="button"
+                                onClick={() => handleKeypad('backspace')}
+                                className="aspect-square rounded-xl bg-red-50 hover:bg-red-100 text-xl font-bold text-brand-red transition-colors shadow-sm border border-red-100 active:scale-95 flex items-center justify-center"
                             >
-                                <span className="material-symbols-outlined text-3xl">backspace</span>
+                                <span className="material-symbols-outlined">backspace</span>
                             </button>
                         </div>
-                        <button className="neumorphic-button mt-2 py-4 rounded-2xl font-bold text-gray-600 uppercase tracking-[0.2em] flex items-center justify-center gap-3">
-                            下一项 <span className="material-symbols-outlined text-[#0f766e]">south</span>
+                        <button
+                            onClick={handleNextItem}
+                            className="w-full btn-gradient py-4 rounded-xl text-white font-black uppercase tracking-widest shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 transform hover:-translate-y-1"
+                        >
+                            <span className="material-symbols-outlined">check</span>
+                            {t('完成', 'Done')}
                         </button>
                     </div>
 
-                    <div className="flex flex-col gap-4">
-                        <div className="text-center text-[11px] font-mono uppercase tracking-[0.4em] text-gray-500">
-                            保存盘点 / Save Count
-                        </div>
-                        <div className="slider-track h-24 rounded-[2rem] flex items-center p-3 relative">
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <span className="text-xs font-bold text-gray-400 uppercase tracking-[0.3em] opacity-60">
-                                    滑动确认
-                                </span>
+                    <div className="bg-brand-red text-white rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                        <h4 className="font-black uppercase tracking-widest text-sm relative z-10">{t('盘点进度', 'Count Progress')}</h4>
+                        <div className="mt-4 relative z-10">
+                            <div className="flex justify-between items-end mb-2">
+                                <span className="text-4xl font-black">{progressPercent}%</span>
+                                <span className="text-xs font-bold opacity-80 mb-1">{itemsCounted} / {totalItems} {t('项', 'Items')}</span>
                             </div>
-                            <div className="slider-handle h-16 w-40 rounded-[1.5rem] knurled-texture flex items-center justify-center cursor-pointer border border-white/70 group transition-all z-10">
-                                <div className="flex gap-2">
-                                    <span className="material-symbols-outlined text-gray-400 group-hover:text-[#0f766e] transition-colors">chevron_right</span>
-                                    <span className="material-symbols-outlined text-gray-400 group-hover:text-[#0f766e] transition-colors">chevron_right</span>
-                                    <span className="material-symbols-outlined text-gray-400 group-hover:text-[#0f766e] transition-colors">chevron_right</span>
-                                </div>
+                            <div className="w-full bg-black/20 h-2 rounded-full overflow-hidden">
+                                <div
+                                    className="bg-white h-full rounded-full transition-all duration-500"
+                                    style={{ width: `${progressPercent}%` }}
+                                ></div>
                             </div>
                         </div>
-                        <p className="text-[10px] font-mono text-gray-400 text-center leading-relaxed uppercase tracking-widest">
-                            滑动确认后写入盘点记录
-                        </p>
+
+                        <div className="mt-6 relative z-10">
+                            <button
+                                onClick={handleSubmit}
+                                disabled={saveLoading}
+                                className="w-full bg-white/10 hover:bg-white/20 py-3 rounded-lg text-xs font-bold uppercase tracking-wide border border-white/20 transition-colors flex items-center justify-center gap-2"
+                            >
+                                {saveLoading
+                                    ? <span className="animate-spin material-symbols-outlined text-sm">refresh</span>
+                                    : <span className="material-symbols-outlined text-sm">save</span>
+                                }
+                                {message || t('提交盘点', 'Submit Count')}
+                            </button>
+                        </div>
                     </div>
-                </aside>
+                </div>
             </div>
         </DndContext>
     );
