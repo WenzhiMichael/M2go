@@ -1,5 +1,13 @@
 import { supabase } from './supabase';
 
+const ensureSupabase = () => {
+  if (!supabase) {
+    const err = new Error('Supabase 未配置，请先设置 VITE_SUPABASE_URL 与 VITE_SUPABASE_ANON_KEY。');
+    err.code = 'SUPABASE_NOT_READY';
+    throw err;
+  }
+};
+
 const DEFAULT_SETTINGS = {
   lookback_days_for_usage: '14',
   safety_buffer_days: '0.8',
@@ -46,6 +54,7 @@ const estimateUsage = (counts) => {
 };
 
 const getSettingsMap = async () => {
+  ensureSupabase();
   const { data, error } = await supabase.from('settings').select('key,value');
   if (error) throw error;
   const map = { ...DEFAULT_SETTINGS };
@@ -80,6 +89,7 @@ const buildCsv = (rows) => {
 };
 
 export async function getProducts() {
+  ensureSupabase();
   const { data, error } = await supabase
     .from('products')
     .select('*, variants(*)')
@@ -89,6 +99,7 @@ export async function getProducts() {
 }
 
 export async function createProduct(data) {
+  ensureSupabase();
   const { data: created, error } = await supabase
     .from('products')
     .insert(data)
@@ -99,6 +110,7 @@ export async function createProduct(data) {
 }
 
 export async function updateProduct(id, data) {
+  ensureSupabase();
   const { data: updated, error } = await supabase
     .from('products')
     .update(data)
@@ -110,6 +122,7 @@ export async function updateProduct(id, data) {
 }
 
 export async function deleteProduct(id) {
+  ensureSupabase();
   const { data: updated, error } = await supabase
     .from('products')
     .update({ is_active: false })
@@ -121,6 +134,7 @@ export async function deleteProduct(id) {
 }
 
 export async function saveDailyCount(data) {
+  ensureSupabase();
   const { error } = await supabase.rpc('apply_daily_count', {
     p_date: data.date,
     p_variant_id: data.variant_id,
@@ -131,6 +145,7 @@ export async function saveDailyCount(data) {
 }
 
 export async function createVariant(data) {
+  ensureSupabase();
   const { data: created, error } = await supabase
     .from('variants')
     .insert(data)
@@ -141,6 +156,7 @@ export async function createVariant(data) {
 }
 
 export async function updateVariant(id, data) {
+  ensureSupabase();
   const { data: updated, error } = await supabase
     .from('variants')
     .update(data)
@@ -152,6 +168,7 @@ export async function updateVariant(id, data) {
 }
 
 export async function deleteVariant(id) {
+  ensureSupabase();
   const { error } = await supabase
     .from('variants')
     .delete()
@@ -161,6 +178,7 @@ export async function deleteVariant(id) {
 }
 
 export async function getOrderSuggestions(orderType) {
+  ensureSupabase();
   const settings = await getSettingsMap();
   const lookbackDays = parseInt(settings.lookback_days_for_usage || DEFAULT_SETTINGS.lookback_days_for_usage, 10) || 14;
   const safetyBuffer = toNumber(settings.safety_buffer_days, toNumber(DEFAULT_SETTINGS.safety_buffer_days, 0.8));
@@ -326,6 +344,7 @@ export async function getOrderSuggestions(orderType) {
 }
 
 export async function createOrder(payload) {
+  ensureSupabase();
   const orderPayload = payload?.order || payload;
   const { data: order, error } = await supabase
     .from('orders')
@@ -345,6 +364,7 @@ export async function createOrder(payload) {
 }
 
 export async function exportOrder(orderId) {
+  ensureSupabase();
   let { data: lines, error } = await supabase
     .from('order_lines')
     .select('*, product:products(*)')
@@ -386,12 +406,14 @@ export async function exportOrder(orderId) {
 }
 
 export async function getSettings() {
+  ensureSupabase();
   const { data, error } = await supabase.from('settings').select('key,value');
   if (error) throw error;
   return data || [];
 }
 
 export async function updateSettings(data) {
+  ensureSupabase();
   const entries = Object.entries(data || {}).map(([key, value]) => ({
     key,
     value: String(value)

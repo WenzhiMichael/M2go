@@ -25,21 +25,28 @@ create policy "Managers can read all roles" on public.user_roles
     exists (select 1 from public.user_roles where user_id = auth.uid() and role = 'manager')
   );
 
--- Allow managers to update roles (promote/demote)
-create policy "Managers can update roles" on public.user_roles
-  for update using (
+-- Allow managers to promote users to manager (no demotion allowed)
+drop policy if exists "Managers can update roles" on public.user_roles;
+create policy "Managers can promote to manager" on public.user_roles
+  for update
+  using (
     exists (select 1 from public.user_roles where user_id = auth.uid() and role = 'manager')
-  );
+  )
+  with check (role = 'manager');
 
 -- 4. Trigger to automatically assign 'staff' role to new users
 create or replace function public.handle_new_user()
-returns trigger as 1352
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
 begin
   insert into public.user_roles (user_id, email, role)
   values (new.id, new.email, 'staff');
   return new;
 end;
-1352 language plpgsql security definer;
+$$;
 
 -- Drop trigger if exists to avoid duplication
 drop trigger if exists on_auth_user_created on auth.users;
@@ -49,7 +56,11 @@ create trigger on_auth_user_created
 
 -- 5. Helper function to check if user is manager (optional, but useful for RLS)
 create or replace function public.is_manager()
-returns boolean as 1352
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
 begin
   return exists (
     select 1 from public.user_roles
@@ -57,7 +68,9 @@ begin
     and role = 'manager'
   );
 end;
-1352 language plpgsql security definer;
+$$;
+
+grant execute on function public.is_manager() to authenticated;
 
 -- 6. Grant permissions
 grant select, update on public.user_roles to authenticated;

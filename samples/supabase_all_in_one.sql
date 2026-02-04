@@ -408,3 +408,80 @@ where not exists (
   select 1 from variants v
   where v.product_id = fv.product_id and v.form = fv.form and v.container = fv.container
 );
+
+-- =======================
+-- 6) Roles (Manager / Staff)
+-- =======================
+create table if not exists public.user_roles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  email text,
+  role text not null default 'staff' check (role in ('manager', 'staff')),
+  created_at timestamp with time zone default now()
+);
+
+alter table public.user_roles enable row level security;
+
+drop policy if exists "Users can read own role" on public.user_roles;
+create policy "Users can read own role" on public.user_roles
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "Managers can read all roles" on public.user_roles;
+create policy "Managers can read all roles" on public.user_roles
+  for select using (
+    exists (select 1 from public.user_roles where user_id = auth.uid() and role = 'manager')
+  );
+
+drop policy if exists "Managers can update roles" on public.user_roles;
+drop policy if exists "Managers can promote to manager" on public.user_roles;
+create policy "Managers can promote to manager" on public.user_roles
+  for update
+  using (
+    exists (select 1 from public.user_roles where user_id = auth.uid() and role = 'manager')
+  )
+  with check (role = 'manager');
+
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.user_roles (user_id, email, role)
+  values (new.id, new.email, 'staff');
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
+
+create or replace function public.is_manager()
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return exists (
+    select 1 from public.user_roles
+    where user_id = auth.uid()
+    and role = 'manager'
+  );
+end;
+$$;
+
+grant execute on function public.is_manager() to authenticated;
+
+grant select, update on public.user_roles to authenticated;
+
+insert into public.user_roles (user_id, email, role)
+select id, email, 'staff'
+from auth.users
+where id not in (select user_id from public.user_roles);
+
+update public.user_roles
+set role = 'manager'
+where user_id = (select id from auth.users order by created_at asc limit 1);

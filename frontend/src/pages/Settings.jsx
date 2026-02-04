@@ -29,14 +29,19 @@ function TeamManagement() {
         fetchUsers();
     }, [fetchUsers]);
 
-    const toggleRole = async (targetUser) => {
+    const promoteToManager = async (targetUser) => {
         // Prevent changing own role (safety)
         if (targetUser.user_id === currentUser.id) {
             alert(t('不能更改自己的权限', 'Cannot change your own role.'));
             return;
         }
 
-        const newRole = targetUser.role === 'manager' ? 'staff' : 'manager';
+        if (targetUser.role === 'manager') {
+            alert(t('经理不能降级为员工', 'Managers cannot be downgraded.'));
+            return;
+        }
+
+        const newRole = 'manager';
         const { error } = await supabase
             .from('user_roles')
             .update({ role: newRole })
@@ -59,7 +64,7 @@ function TeamManagement() {
                         {t('团队管理', 'Team Management')}
                     </h3>
                     <p className="text-xs text-gray-500 mt-1">
-                        {t('管理成员权限（经理/员工）', 'Manage member roles (Manager/Staff)')}
+                        {t('仅支持升级为经理（不可降级）', 'Only promote to Manager (no demotion)')}
                     </p>
                 </div>
             </div>
@@ -78,12 +83,12 @@ function TeamManagement() {
                                 <div className="text-[10px] text-slate-400 uppercase tracking-widest">{u.role}</div>
                             </div>
                         </div>
-                        {u.user_id !== currentUser.id && (
+                        {u.user_id !== currentUser.id && u.role !== 'manager' && (
                             <button
-                                onClick={() => toggleRole(u)}
+                                onClick={() => promoteToManager(u)}
                                 className="px-3 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-brand-red transition-colors"
                             >
-                                {u.role === 'manager' ? t('设为员工', 'Set as Staff') : t('设为经理', 'Set as Manager')}
+                                {t('设为经理', 'Set as Manager')}
                             </button>
                         )}
                          {u.user_id === currentUser.id && (
@@ -108,6 +113,7 @@ function Settings() {
     };
 
     const handleLogout = async () => {
+        sessionStorage.removeItem('m2go_auth_ok');
         await supabase.auth.signOut();
         // Redirect handled by App/UserRoleContext
     };

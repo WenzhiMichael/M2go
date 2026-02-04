@@ -2,11 +2,16 @@ import { Link, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
 import { useLang } from '../i18n';
 import { useUserRole } from '../context/UserRoleContext';
+import { supabase } from '../supabase';
 
 export default function Sidebar() {
     const location = useLocation();
     const { t } = useLang();
     const { mode } = useUserRole();
+    const handleLogout = async () => {
+        sessionStorage.removeItem('m2go_auth_ok');
+        await supabase.auth.signOut();
+    };
 
     const isActive = (path) => {
         return location.pathname === path;
@@ -77,6 +82,13 @@ export default function Sidebar() {
                     <span className="material-symbols-outlined">settings</span>
                     <span className="ml-4 hidden lg:block text-sm font-bold uppercase tracking-widest">{t('设置', 'Settings')}</span>
                 </Link>
+                <button
+                    onClick={handleLogout}
+                    className="mt-4 w-full flex items-center justify-center lg:justify-start text-white/60 hover:text-white transition-colors"
+                >
+                    <span className="material-symbols-outlined">logout</span>
+                    <span className="ml-4 hidden lg:block text-sm font-bold uppercase tracking-widest">{t('登出', 'Sign Out')}</span>
+                </button>
             </div>
         </aside>
     );
