@@ -62,7 +62,11 @@ export function UserRoleProvider({ children }) {
                 console.warn('User_roles select threw:', dbErr);
             }
 
-            setRole(rpcRole || dbRole || 'staff');
+            let finalRole = dbRole || rpcRole || 'staff';
+            if (rpcRole === 'manager' || dbRole === 'manager') {
+                finalRole = 'manager';
+            }
+            setRole(finalRole);
         } catch (err) {
             console.error('Unexpected error fetching role:', err);
             setRole('staff');
@@ -87,55 +91,17 @@ export function UserRoleProvider({ children }) {
             return;
         }
         let cancelled = false;
-        const timeoutId = setTimeout(() => {
-            if (cancelled) return;
-            console.warn('Supabase auth init timeout. Falling back to login screen.');
-            setUser(null);
-            setRole(null);
-            setLoading(false);
-        }, 5000);
-
-        const authOk = sessionStorage.getItem('m2go_auth_ok') === '1';
-
-        // Fetch session on mount
-        const getSession = async () => {
-            try {
-                const { data, error } = await supabase.auth.getSession();
-                if (error) {
-                    console.warn('Supabase getSession error:', error.message);
-                }
-                const session = data?.session || null;
-                if (session && !authOk) {
-                    await supabase.auth.signOut();
-                    if (cancelled) return;
-                    setUser(null);
-                    setRole(null);
-                    clearTimeout(timeoutId);
-                    setLoading(false);
-                    return;
-                }
-                if (cancelled) return;
-                setUser(session?.user || null);
-                if (session?.user) {
-                    await fetchRole(session.user.id);
-                    if (!cancelled) {
-                        clearTimeout(timeoutId);
-                    }
-                } else {
-                    clearTimeout(timeoutId);
-                    setLoading(false);
-                }
-            } catch (err) {
-                console.error('Supabase getSession failed:', err);
-                if (cancelled) return;
+        // Always require manual login per page load
+        sessionStorage.removeItem('m2go_auth_ok');
+        supabase.auth.signOut().catch((err) => {
+            console.warn('Force logout failed:', err);
+        }).finally(() => {
+            if (!cancelled) {
                 setUser(null);
                 setRole(null);
-                clearTimeout(timeoutId);
                 setLoading(false);
             }
-        };
-
-        getSession();
+        });
 
         // Listen for auth changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -171,7 +137,6 @@ export function UserRoleProvider({ children }) {
 
         return () => {
             cancelled = true;
-            clearTimeout(timeoutId);
             subscription.unsubscribe();
         };
     }, [fetchRole]);

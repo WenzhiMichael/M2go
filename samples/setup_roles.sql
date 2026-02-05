@@ -13,6 +13,24 @@ create table if not exists public.user_roles (
 -- 2. Enable RLS
 alter table public.user_roles enable row level security;
 
+-- Helper function to check if user is manager (used by RLS)
+create or replace function public.is_manager()
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  return exists (
+    select 1 from public.user_roles
+    where user_id = auth.uid()
+    and role = 'manager'
+  );
+end;
+$$;
+
+grant execute on function public.is_manager() to authenticated;
+
 -- 3. Policies
 
 -- Allow users to read their own role
@@ -21,17 +39,13 @@ create policy "Users can read own role" on public.user_roles
 
 -- Allow managers to read all roles (to manage team)
 create policy "Managers can read all roles" on public.user_roles
-  for select using (
-    exists (select 1 from public.user_roles where user_id = auth.uid() and role = 'manager')
-  );
+  for select using (public.is_manager());
 
 -- Allow managers to promote users to manager (no demotion allowed)
 drop policy if exists "Managers can update roles" on public.user_roles;
 create policy "Managers can promote to manager" on public.user_roles
   for update
-  using (
-    exists (select 1 from public.user_roles where user_id = auth.uid() and role = 'manager')
-  )
+  using (public.is_manager())
   with check (role = 'manager');
 
 -- 4. Trigger to automatically assign 'staff' role to new users
@@ -53,24 +67,6 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
-
--- 5. Helper function to check if user is manager (optional, but useful for RLS)
-create or replace function public.is_manager()
-returns boolean
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  return exists (
-    select 1 from public.user_roles
-    where user_id = auth.uid()
-    and role = 'manager'
-  );
-end;
-$$;
-
-grant execute on function public.is_manager() to authenticated;
 
 -- 6. Grant permissions
 grant select, update on public.user_roles to authenticated;

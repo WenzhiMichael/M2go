@@ -14,8 +14,10 @@
 前置条件：Node.js（建议使用 LTS 版本）。
 
 1) 在 Supabase 创建项目（或复用你已部署的项目），在 SQL Editor 执行：
-   - `samples/supabase_all_in_one.sql`
-   - 该脚本已包含基础商品/规格种子数据（蛋白/蔬菜/冷冻）
+   - **只需执行一个文件：** `samples/supabase_all_in_one.sql`
+   - 该脚本已包含建表、RLS、函数、审计、角色与基础商品/规格种子数据
+   - **不要再单独执行** `schema.sql` / `setup_roles.sql`，会重复
+   - 如使用纯本地 Postgres（非 Supabase），请不要执行角色相关段落（依赖 `auth.users`）
 2) 在 `frontend/.env.local` 配置环境变量：
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
@@ -103,4 +105,3 @@ npm run dev
   说明你在根目录执行了前端命令，请先 `cd frontend` 再运行。
 - 登录失败或请求报错  
   请检查 `frontend/.env.local` 是否配置了 `VITE_SUPABASE_URL` 与 `VITE_SUPABASE_ANON_KEY`，并确认 Supabase 项目已执行 SQL 初始化脚本。
-

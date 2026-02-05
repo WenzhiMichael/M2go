@@ -9,4 +9,12 @@ if (!supabaseReady) {
   console.warn('Supabase env missing. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
 }
 
-export const supabase = supabaseReady ? createClient(supabaseUrl, supabaseAnonKey) : null;
+export const supabase = supabaseReady
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: true
+      }
+    })
+  : null;
