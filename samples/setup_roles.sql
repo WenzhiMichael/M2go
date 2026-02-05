@@ -45,7 +45,7 @@ create policy "Managers can read all roles" on public.user_roles
 drop policy if exists "Managers can update roles" on public.user_roles;
 create policy "Managers can promote to manager" on public.user_roles
   for update
-  using (public.is_manager())
+  using (public.is_manager() and role = 'staff')
   with check (role = 'manager');
 
 -- 4. Trigger to automatically assign 'staff' role to new users
