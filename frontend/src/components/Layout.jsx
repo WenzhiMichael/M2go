@@ -1,4 +1,5 @@
 import Sidebar from './Sidebar';
+import { Outlet } from 'react-router-dom';
 
 export default function Layout({ children }) {
     return (
@@ -15,7 +16,7 @@ export default function Layout({ children }) {
                 </header>
 
                 <div className="relative z-10 p-6 lg:p-10 max-w-[1920px] mx-auto">
-                    {children}
+                    {children ?? <Outlet />}
                 </div>
             </main>
         </div>

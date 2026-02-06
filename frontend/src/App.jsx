@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import DailyCount from './pages/DailyCount';
 import ConversionSetup from './pages/ConversionSetup';
 import OrderSuggestions from './pages/OrderSuggestions';
@@ -12,6 +12,40 @@ import Layout from './components/Layout';
 import { supabase, supabaseReady } from './supabase';
 import { useLang } from './i18n';
 import { useUserRole } from './context/UserRoleContext';
+
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), ms);
+    promise
+      .then((val) => {
+        clearTimeout(timer);
+        resolve(val);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
+function setAuthOkIfSession(session) {
+  if (session) sessionStorage.setItem('m2go_auth_ok', '1');
+}
+
+function getLoginValidationError(email, password, t) {
+  if (!email || !password) return t('请输入邮箱和密码', 'Please enter email and password.');
+  return null;
+}
+
+function getSignupValidationError(email, password, t) {
+  const pw = password || '';
+  const hasLetter = /[A-Za-z]/.test(pw);
+  const hasDigit = /\d/.test(pw);
+  if (!email) return t('请输入邮箱', 'Please enter email.');
+  if (pw.length < 10) return t('密码太短：至少 10 位', 'Password too short: minimum 10 characters.');
+  if (!hasLetter || !hasDigit) return t('密码必须包含字母和数字', 'Password must include letters and digits.');
+  return null;
+}
 
 function AuthScreen() {
   const [email, setEmail] = useState('');
@@ -36,62 +70,34 @@ function AuthScreen() {
   const handleAuth = async () => {
     setLoading(true);
     setMessage('');
-    const withTimeout = (promise, ms) => new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('timeout')), ms);
-      promise.then((val) => {
-        clearTimeout(timer);
-        resolve(val);
-      }).catch((err) => {
-        clearTimeout(timer);
-        reject(err);
-      });
-    });
 
     try {
-      if (authMode === 'login') {
-        if (!email || !password) {
-          setMessage(t('请输入邮箱和密码', 'Please enter email and password.'));
-          return;
-        }
-        const { data, error } = await withTimeout(
-          supabase.auth.signInWithPassword({ email, password }),
-          8000
-        );
-        if (error) {
-          setMessage(`${t('登录失败：', 'Login failed: ')}${error.message}`);
-        } else if (data?.session) {
-          sessionStorage.setItem('m2go_auth_ok', '1');
-        }
-      } else if (authMode === 'signup') {
-        // Client-side password checks (match current Supabase settings)
-        const pw = password || '';
-        const hasLetter = /[A-Za-z]/.test(pw);
-        const hasDigit = /\d/.test(pw);
-        if (!email) {
-          setMessage(t('请输入邮箱', 'Please enter email.'));
-          return;
-        }
-        if (pw.length < 10) {
-          setMessage(t('密码太短：至少 10 位', 'Password too short: minimum 10 characters.'));
-          return;
-        }
-        if (!hasLetter || !hasDigit) {
-          setMessage(t('密码必须包含字母和数字', 'Password must include letters and digits.'));
-          return;
-        }
-        const { data, error } = await withTimeout(
-          supabase.auth.signUp({ email, password }),
-          8000
-        );
-        if (error) {
-          setMessage(`${t('注册失败：', 'Sign up failed: ')}${error.message}`);
-        } else {
-          setMessage(t('注册成功，请到邮箱完成验证后再登录', 'Account created. Verify email, then sign in.'));
-          setAuthMode('login');
-          if (data?.session) {
-            sessionStorage.setItem('m2go_auth_ok', '1');
-          }
-        }
+      const isLogin = authMode === 'login';
+      const validationError = isLogin
+        ? getLoginValidationError(email, password, t)
+        : getSignupValidationError(email, password, t);
+
+      if (validationError) {
+        setMessage(validationError);
+        return;
+      }
+
+      const authCall = isLogin
+        ? supabase.auth.signInWithPassword({ email, password })
+        : supabase.auth.signUp({ email, password });
+
+      const { data, error } = await withTimeout(authCall, 8000);
+      if (error) {
+        const prefix = isLogin ? t('登录失败：', 'Login failed: ') : t('注册失败：', 'Sign up failed: ');
+        setMessage(prefix + error.message);
+        return;
+      }
+
+      setAuthOkIfSession(data?.session);
+
+      if (!isLogin) {
+        setMessage(t('注册成功，请到邮箱完成验证后再登录', 'Account created. Verify email, then sign in.'));
+        setAuthMode('login');
       }
     } catch (err) {
       if (err?.message === 'timeout') {
@@ -103,6 +109,11 @@ function AuthScreen() {
       setLoading(false);
     }
   };
+
+  let primaryLabel = authMode === 'login'
+    ? t('进入系统', 'Enter System')
+    : t('创建账号', 'Create Account');
+  if (loading) primaryLabel = t('处理中...', 'Processing...');
 
   return (
     <div className="min-h-screen text-slate-900 relative">
@@ -165,11 +176,7 @@ function AuthScreen() {
             onClick={handleAuth}
             disabled={loading}
           >
-            {loading
-              ? t('处理中...', 'Processing...')
-              : authMode === 'login'
-                ? t('进入系统', 'Enter System')
-                : t('创建账号', 'Create Account')}
+            {primaryLabel}
           </button>
 
           {message && (
@@ -223,16 +230,18 @@ VITE_SUPABASE_ANON_KEY=your-anon-key`}
   );
 }
 
-function RequireManager({ children }) {
-    const { mode, role } = useUserRole();
-    // If not manager mode (or not manager role), redirect to daily count
-    // But allow if we are just switching (maybe loading?)
-    // Actually loading is handled in App.
+function RequireMode() {
+  const { mode } = useUserRole();
+  if (!mode) return <Navigate to="/select-mode" replace />;
+  return <Outlet />;
+}
 
-    if (mode !== 'manager' || role !== 'manager') {
-        return <Navigate to="/daily-count" replace />;
-    }
-    return children;
+function RequireManager() {
+  const { mode, role } = useUserRole();
+  if (mode !== 'manager' || role !== 'manager') {
+    return <Navigate to="/daily-count" replace />;
+  }
+  return <Outlet />;
 }
 
 function App() {
@@ -257,32 +266,32 @@ function App() {
     return <AuthScreen />;
   }
 
+  const homePath = mode === 'manager' ? '/dashboard' : '/daily-count';
+
   return (
     <Routes>
       <Route path="/select-mode" element={<SelectMode />} />
 
-      <Route path="/*" element={
-        !mode ? <Navigate to="/select-mode" replace /> : (
-          <Layout>
-            <Routes>
-              <Route path="/" element={<Navigate to={mode === 'manager' ? "/dashboard" : "/daily-count"} replace />} />
+      <Route element={<RequireMode />}>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Navigate to={homePath} replace />} />
 
-              {/* Shared Routes */}
-              <Route path="/daily-count" element={<DailyCount />} />
-              <Route path="/settings" element={<Settings />} />
+          {/* Shared Routes */}
+          <Route path="daily-count" element={<DailyCount />} />
+          <Route path="settings" element={<Settings />} />
 
-              {/* Manager Only Routes */}
-              <Route path="/dashboard" element={<RequireManager><Dashboard /></RequireManager>} />
-              <Route path="/conversion-setup" element={<RequireManager><ConversionSetup /></RequireManager>} />
-              <Route path="/order-suggestions" element={<RequireManager><OrderSuggestions /></RequireManager>} />
-              <Route path="/products" element={<RequireManager><Products /></RequireManager>} />
-              <Route path="/analytics" element={<RequireManager><Analytics /></RequireManager>} />
+          {/* Manager Only Routes */}
+          <Route element={<RequireManager />}>
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="conversion-setup" element={<ConversionSetup />} />
+            <Route path="order-suggestions" element={<OrderSuggestions />} />
+            <Route path="products" element={<Products />} />
+            <Route path="analytics" element={<Analytics />} />
+          </Route>
 
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Layout>
-        )
-      } />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Route>
     </Routes>
   );
 }
