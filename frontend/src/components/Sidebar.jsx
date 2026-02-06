@@ -58,13 +58,13 @@ export default function Sidebar() {
                             <span className="material-symbols-outlined text-2xl">tune</span>
                             <span className="ml-4 hidden lg:block tracking-wide">{t('换算设置', 'Conversions')}</span>
                         </Link>
-                        <Link to="/order-suggestions" className={navItemClass('/order-suggestions')}>
-                            <span className="material-symbols-outlined text-2xl">receipt_long</span>
-                            <span className="ml-4 hidden lg:block tracking-wide">{t('订货建议', 'Orders')}</span>
-                        </Link>
                         <Link to="/products" className={navItemClass('/products')}>
                             <span className="material-symbols-outlined text-2xl">soup_kitchen</span>
                             <span className="ml-4 hidden lg:block tracking-wide">{t('商品与规格', 'Products')}</span>
+                        </Link>
+                        <Link to="/order-suggestions" className={navItemClass('/order-suggestions')}>
+                            <span className="material-symbols-outlined text-2xl">receipt_long</span>
+                            <span className="ml-4 hidden lg:block tracking-wide">{t('订货建议', 'Orders')}</span>
                         </Link>
                         <Link to="/analytics" className={navItemClass('/analytics')}>
                             <span className="material-symbols-outlined text-2xl">trending_up</span>
