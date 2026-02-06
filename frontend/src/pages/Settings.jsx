@@ -82,63 +82,75 @@ function TeamManagement() {
             )}
 
             <div className="space-y-6">
-                <div className="space-y-3">
-                    <div className="text-xs font-bold uppercase tracking-widest text-slate-500">
-                        {t('经理', 'Managers')}
+                {/* Managers (top) */}
+                <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white">
+                    <div className="flex items-center justify-between px-5 py-3 bg-slate-900 text-white">
+                        <div className="text-sm font-black tracking-wide">{t('经理', 'Managers')}</div>
+                        <div className="text-xs font-mono text-white/70">{managers.length}</div>
                     </div>
-                    {managers.length === 0 && (
-                        <div className="text-xs text-slate-400 bg-slate-50 border border-slate-100 rounded-xl p-4">
-                            {t('暂无经理', 'No managers yet')}
-                        </div>
-                    )}
-                    {managers.map(u => (
-                        <div key={u.user_id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white bg-brand-red">
-                                    M
-                                </div>
-                                <div>
-                                    <div className="font-bold text-slate-800 text-sm">{u.email || 'User'}</div>
-                                    <div className="text-[10px] text-slate-400 uppercase tracking-widest">manager</div>
-                                </div>
+                    <div className="divide-y divide-slate-200">
+                        {managers.length === 0 ? (
+                            <div className="px-5 py-4 text-xs text-slate-500 bg-slate-50">
+                                {t('暂无经理', 'No managers yet')}
                             </div>
-                            {u.user_id === currentUser.id && (
-                                <span className="text-[10px] text-slate-400 italic px-3">{t('（你）', '(You)')}</span>
-                            )}
-                        </div>
-                    ))}
+                        ) : (
+                            managers.map((u) => (
+                                <div key={u.user_id} className="flex items-center justify-between px-5 py-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white bg-brand-red">
+                                            M
+                                        </div>
+                                        <div>
+                                            <div className="font-bold text-slate-800 text-sm">{u.email || 'User'}</div>
+                                            <div className="text-[10px] text-slate-400 uppercase tracking-widest">manager</div>
+                                        </div>
+                                    </div>
+                                    {u.user_id === currentUser.id ? (
+                                        <span className="text-[10px] text-slate-400 italic px-3">{t('（你）', '(You)')}</span>
+                                    ) : (
+                                        <span className="text-[10px] text-slate-400 px-3">{t('可见', 'Visible')}</span>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
 
-                <div className="space-y-3">
-                    <div className="text-xs font-bold uppercase tracking-widest text-slate-500">
-                        {t('员工', 'Staff')}
+                {/* Staff (bottom) */}
+                <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white">
+                    <div className="flex items-center justify-between px-5 py-3 bg-slate-50">
+                        <div className="text-sm font-black tracking-wide text-slate-900">{t('员工', 'Staff')}</div>
+                        <div className="text-xs font-mono text-slate-400">{staff.length}</div>
                     </div>
-                    {staff.length === 0 && (
-                        <div className="text-xs text-slate-400 bg-slate-50 border border-slate-100 rounded-xl p-4">
-                            {t('暂无员工', 'No staff yet')}
-                        </div>
-                    )}
-                    {staff.map(u => (
-                        <div key={u.user_id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white bg-emerald-500">
-                                    S
-                                </div>
-                                <div>
-                                    <div className="font-bold text-slate-800 text-sm">{u.email || 'User'}</div>
-                                    <div className="text-[10px] text-slate-400 uppercase tracking-widest">staff</div>
-                                </div>
+                    <div className="divide-y divide-slate-200">
+                        {staff.length === 0 ? (
+                            <div className="px-5 py-4 text-xs text-slate-500 bg-slate-50">
+                                {t('暂无员工', 'No staff yet')}
                             </div>
-                            {u.user_id !== currentUser.id && (
-                                <button
-                                    onClick={() => promoteToManager(u)}
-                                    className="px-3 py-2 text-xs font-bold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-brand-red transition-colors"
-                                >
-                                    {t('升级为经理', 'Upgrade')}
-                                </button>
-                            )}
-                        </div>
-                    ))}
+                        ) : (
+                            staff.map((u) => (
+                                <div key={u.user_id} className="flex items-center justify-between px-5 py-4">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-white bg-emerald-500">
+                                            S
+                                        </div>
+                                        <div>
+                                            <div className="font-bold text-slate-800 text-sm">{u.email || 'User'}</div>
+                                            <div className="text-[10px] text-slate-400 uppercase tracking-widest">staff</div>
+                                        </div>
+                                    </div>
+                                    {u.user_id !== currentUser.id && (
+                                        <button
+                                            onClick={() => promoteToManager(u)}
+                                            className="px-3 py-2 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-brand-red transition-colors"
+                                        >
+                                            {t('晋升为经理', 'Upgrade')}
+                                        </button>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
             </div>
         </section>
