@@ -81,7 +81,7 @@ function TeamManagement() {
                 </div>
             )}
 
-            <div className="grid gap-6 md:grid-cols-2">
+            <div className="space-y-6">
                 <div className="space-y-3">
                     <div className="text-xs font-bold uppercase tracking-widest text-slate-500">
                         {t('经理', 'Managers')}
